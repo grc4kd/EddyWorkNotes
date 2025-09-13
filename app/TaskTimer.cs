@@ -1,34 +1,49 @@
 namespace Eddy;
 
-public class TaskTimer
+
+/// <summary>
+/// Defaults to 25 minutes for <see cref="WorkDuration"/>.
+/// Defaults to  5 minutes for <see cref="BreakDuration"/>.
+/// </summary>
+/// <param name="WorkDuration"></param>
+/// <param name="BreakDuration"></param>
+/// <param name="IsWorkTime"></param>
+/// <param name="RemainingTime"></param>
+public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime) : IDisposable
 {
-    private readonly PeriodicTimer _timer;
     private CancellationTokenSource _cts = new();
 
-    public int WorkDuration { get; set; } = 25 * 60; // Default 25 minutes in seconds
-    public int BreakDuration { get; set; } = 5 * 60;   // Default 5 minutes in seconds
-    public bool IsRunning { get; private set; }
-    public bool IsWorkTime { get; private set; }
-    public double RemainingTime { get; private set; }
+    public int WorkDuration { get; set; } = WorkDuration;
+    public int BreakDuration { get; set; } = BreakDuration;
+    public bool IsRunning { get; set; } = false;
+    public bool IsWorkTime { get; set; } = IsWorkTime;
+    public double RemainingTime { get; set; }
 
     public event EventHandler? TimeElapsed;
     public event EventHandler? TimerCompleted;
 
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="startWithWork"></param>
-    public TaskTimer(bool startWithWork = true)
+    private static PeriodicTimer _timer = new(TimeSpan.FromMilliseconds(1));
+
+    /// <param name="IsWorkTime"></param>
+    public TaskTimer(bool IsWorkTime, int WorkDuration, int BreakDuration) : this(WorkDuration, BreakDuration, IsWorkTime)
     {
-        _timer = new(TimeSpan.FromSeconds(startWithWork switch
+        ResetTimer();
+    }
+
+    private void ResetTimer()
+    {
+        _timer = new(TimeSpan.FromSeconds(IsWorkTime switch
         {
             true => WorkDuration,
             false => BreakDuration
         }));
 
-        IsWorkTime = startWithWork;
-        // until Start method is called, do not set running timer state
-        IsRunning = false;
+        RemainingTime = _timer.Period.TotalSeconds;
+    }
+
+    public TaskTimer(int WorkDuration, int BreakDuration) : this(IsWorkTime: true, WorkDuration, BreakDuration)
+    {
+        
     }
 
     public virtual void OnTimeElapsed(EventArgs e)
@@ -43,12 +58,11 @@ public class TaskTimer
 
     public async Task StartAsync()
     {
-        RemainingTime = IsWorkTime ? WorkDuration : BreakDuration;
+        ResetTimer();
 
-        if (_cts != null)
+        if (_cts.IsCancellationRequested)
             TogglePause();
 
-        _cts = new CancellationTokenSource();
         await UpdateTimeAsync(_cts.Token);
     }
 
@@ -65,13 +79,19 @@ public class TaskTimer
             return;
         }
 
+        // stop and complete the timer after break is over
+        IsRunning = IsWorkTime;
+
         await _timer.WaitForNextTickAsync(_cts.Token);
-    
-        // Auto-switch between work and break
+
+        // switch to break time, then reset timer
         IsWorkTime = !IsWorkTime;
-        await StartAsync();
-        
-        RemainingTime = 0;
-        IsRunning = false;
+        ResetTimer();
+    }
+
+    public void Dispose()
+    {
+        TimerCompleted?.Method.Invoke(this, []);
+        GC.SuppressFinalize(this);
     }
 }
