@@ -29,7 +29,7 @@
 </div>
 
 @code {
-    private Eddy.TaskTimer _taskTimer = new Eddy.TaskTimer();
+    private Eddy.TaskTimer _taskTimer = new Eddy.TaskTimer(25, 5);
     private bool IsInitialized { get; set; } = false;
     private string TimerStatus { get; set; } = "Idle";
 

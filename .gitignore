@@ -12,3 +12,9 @@ vstest_results
 
 # ignore mermaid diagram builder scripts in docs folder
 docs/mermaid*.js
+
+# ignore UI server pages at wwwroot for now, this should be rendered or built after the repository
+ui/wwwroot
+
+# ignore test results folder from Playwright project
+PlaywrightTests/TestResults/
