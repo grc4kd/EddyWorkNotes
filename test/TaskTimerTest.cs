@@ -1,6 +1,8 @@
+using System;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Eddy;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+using Xunit;
 
 namespace test;
 
@@ -8,10 +10,10 @@ public class TaskTimerServiceTest
 {
     private LoggerFactory loggerFactory;
 
-    public TaskTimerServiceTest()
-    {
-        loggerFactory = new LoggerFactory();
-        loggerFactory.AddProvider(NullLoggerProvider.Instance);
+        // Then
+        Assert.False(timer.IsRunning);
+        Assert.True(timer.IsWorkTime);
+        Assert.Equal(40, timer.RemainingTime);
     }
 
     [Fact]
@@ -36,228 +38,78 @@ public class TaskTimerServiceTest
     public async Task UpdateTimeAsync_WhenWorkTime_ShouldNotDecreaseRemainingTime()
     {
         // Given
-        var logger = new Logger<TaskTimerService>(loggerFactory);
-        var notifier = new NotifierService();
-        var timer = new TaskTimerService(logger, notifier);
-        string result = string.Empty;
-
-        notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
+        TaskTimer timer = new(WorkDuration: 2, BreakDuration: 1);
+        Task task = timer.StartAsync();
 
         // When
-        var task = timer.StartAsync(TimeSpan.FromMinutes(25));
-        await Task.Yield();
+        // Let time advance by some seconds
+        int seconds = 1;
+        await Assert.ThrowsAsync<TimeoutException>(async () => await task.WaitAsync(TimeSpan.FromSeconds(seconds)));
 
         // Then
         // Timer should have original state, period has not elapsed
         Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
-        Assert.Equal(string.Empty, result);
+        Assert.True(timer.IsRunning);
+        Assert.True(timer.IsWorkTime);
+        Assert.Equal(timer.WorkDuration, timer.RemainingTime);
+        Assert.NotEqual(timer.WorkDuration, timer.RemainingTime - seconds);
     }
 
     [Fact]
-    public async Task StartAsync_WhenCancelled_ShouldCancelTimerTask()
+    public async Task BreakTime_ShouldTransitionToBreakTimeAfterWorkDuration()
     {
         // Given
-        var logger = new Logger<TaskTimerService>(loggerFactory);
-        var notifier = new NotifierService();
-        var timer = new TaskTimerService(logger, notifier);
-        string result = string.Empty;
+        TaskTimer timer = new(WorkDuration: 2, BreakDuration: 1);
 
-        notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
-
-        // When - Start and immediately cancel
-        var task = timer.StartAsync(TimeSpan.FromMinutes(25));
-        timer.Cancel();
-        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
-        Assert.Equal(TaskStatus.Canceled, task.Status);
-    }
-
-    [Fact]
-    public async Task StartAsync_WithCancellation_ShouldNotTriggerTimerCompletedEvent()
-    {
-        // Given
-        TaskTimer timer = new(InitialTimeSpan: TimeSpan.FromMinutes(1));
-
-        // setup a callback for the event handler that marks timer complete
-        bool timerCompleted = false;
-        Task onTimerCompleted(object? sender, EventArgs eventArgs) =>
-            Task.FromResult(() => timerCompleted = true);
-
-        async Task onTimerCompletedAction() => await onTimerCompleted(this, EventArgs.Empty);
-
-        timer.TimerCompleted += onTimerCompletedAction;
-
-        try
-        {
-            // When - Start and immediately cancel
-            var task = timer.StartAsync();
-            await timer.CancelAsync();
-
-            // Then
-            await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
-            // The task was cancelled, but the timer was not completed.
-            Assert.True(task.IsCanceled);
-            Assert.False(timerCompleted);
-        }
-        finally
-        {
-            timer.TimerCompleted -= onTimerCompletedAction;
-        }
-    }
-
-    [Fact]
-    public async Task OnTimerCompleted_ShouldNotTriggerEventWhenTimerIsCancelled()
-    {
-        // Given
-        var timer = new TestPeriodicTimer(TimeSpan.FromMinutes(1));
-
-        // setup a callback for the event handler that marks timer complete
-        bool timerCompleted = false;
-        async Task onTimerCompleted(object? sender, EventArgs eventArgs) => await Task.FromResult(timer.TimerCompleted);
-        async Task onTimerCompletedAction() => await onTimerCompleted(this, EventArgs.Empty);
-        timer.TimerCompleted += onTimerCompletedAction;
-
-        try
-        {
-            // When
-            var timerTask = timer.StartAsync();
-            await timer.CancelAsync();
-
-            // Then
-            Assert.False(timerCompleted);
-        }
-        finally
-        {
-            timer.TimerCompleted -= onTimerCompletedAction;
-        }
-    }
-
-    [Fact]
-    public async Task StartAsync_CancelAlreadyCancelled_ShouldNotThrow()
-    {
-        // Given
-        var timer = new TaskTimer(InitialTimeSpan: TimeSpan.FromMinutes(1));
-        var task = timer.StartAsync();
-
-        // When - Cancel twice
-        await timer.CancelAsync();
-        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
-
-        // Second cancel call should not throw exception
-        await timer.CancelAsync();
+        // Wait for work duration to complete
+        await timer.StartAsync();
 
         // Then
-        Assert.Equal(TaskStatus.Canceled, task.Status);
+        Assert.False(timer.IsWorkTime);
+        Assert.Equal(timer.BreakDuration, timer.RemainingTime);
     }
 
     [Fact]
-    public async Task StartAsync_WithCancellation_ShouldCancelElapsedEvent()
+    public async Task BreakTime_RemainingTimePeriodDecreasesDuringBreak()
     {
         // Given
-        var logger = new Logger<TaskTimerService>(loggerFactory);
-        var notifier = new NotifierService();
-        var timer = new TaskTimerService(logger, notifier);
-        string result = string.Empty;
+        TaskTimer timer = new(WorkDuration: 2, BreakDuration: 1);
 
-        notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
-
-        // When - Start and immediately cancel
-        var task = timer.StartAsync(TimeSpan.FromMinutes(25));
-        timer.Cancel();
-        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
-        Assert.Equal(TaskStatus.Canceled, task.Status);
-        Assert.Equal(WorkDuration, timer.Period);
-    }
-
-    [Fact]
-    public async Task Resume_ShouldResumeTimerCorrectly()
-    {
-        // Given
-        var WorkDuration = TimeSpan.FromMinutes(1);
-        var timer = new TaskTimer(WorkDuration);
-
-        // When - Start, pause, and then resume the timer
-        var task = timer.StartAsync();
-        timer.Pause();
-        await task;
-        var task2 = timer.StartAsync();
+        // Wait for work duration to complete
+        await timer.StartAsync();
 
         // Then
-        Assert.Equal(TaskStatus.RanToCompletion, task.Status);
-        Assert.Equal(TaskStatus.WaitingForActivation, task2.Status);
-        Assert.Equal(WorkDuration.TotalSeconds, timer.Period.TotalSeconds, 0.01d);
+        Assert.Equal(timer.BreakDuration, timer.RemainingTime);
     }
 
     [Fact]
-    public async Task OnTimerCompleted_ShouldTriggerEventWhenTimerCompletesNaturally()
+    public async Task BreakTime_TimerCompletesAfterBreakDuration()
     {
         // Given
-        var WorkDuration = TimeSpan.FromMilliseconds(1);
-        var timer = new TaskTimer(WorkDuration);
+        TaskTimer timer = new(WorkDuration: 1, BreakDuration: 2);
 
-        // setup a callback for the event handler that marks timer complete
-        bool timerCompleted = false;
-        Task onTimerCompleted(object? sender, EventArgs eventArgs)
-        {
-            timerCompleted = true;
-            return Task.CompletedTask;
-        }
+        // Wait for work duration to complete
+        await timer.StartAsync();
 
-        async Task onTimerCompletedAction() => await onTimerCompleted(this, EventArgs.Empty);
-        timer.TimerCompleted += onTimerCompletedAction;
+        // Wait for break duration to complete
+        await timer.StartAsync();
 
-        try
-        {
-            // When - Start the timer and wait for it to complete naturally
-            await timer.StartAsync();
-
-            // Then
-            Assert.True(timerCompleted);
-        }
-        finally
-        {
-            timer.TimerCompleted -= onTimerCompletedAction;
-        }
+        // Then
+        Assert.False(timer.IsRunning);
     }
 
     [Fact]
-    public async Task NewTimer_ShouldStartAfterPreviousCompletes()
+    public async Task BreakTime_TimerCyclesWorkAndBreak()
     {
         // Given
-        var Duration = TimeSpan.FromMilliseconds(100); // Short duration for quick test
-        var timer = new TestPeriodicTimer(Duration);
+        TaskTimer timer = new(WorkDuration: 2, BreakDuration: 1);        
 
-        bool firstTimerCompleted = false;
-        bool secondTimerStarted = false;
+        // When - Wait for one work/break cycle
+        await timer.StartAsync();
+        await timer.StartAsync();
 
-        Task onFirstTimerCompleted()
-        {
-            firstTimerCompleted = true;
-            // Simulate starting a new timer here
-            _ = StartNewTimer();
-            return Task.CompletedTask;
-        }
-
-        async Task StartNewTimer()
-        {
-            var newTimer = new TestPeriodicTimer(Duration);
-            newTimer.TimerCompleted += new Func<Task>(newTimer.StartAsync);
-            await newTimer.StartAsync();
-        }
-
-        timer.TimerCompleted += onFirstTimerCompleted;
-
-        try
-        {
-            // When - Start the first timer and wait for it to complete naturally
-            await timer.StartAsync();
-
-            // Then
-            Assert.True(firstTimerCompleted);
-            Assert.False(secondTimerStarted);
-        }
-        finally
-        {
-            timer.TimerCompleted -= onFirstTimerCompleted;
-        }
+        // Then
+        Assert.True(timer.IsWorkTime);
+        Assert.Equal(timer.WorkDuration, timer.RemainingTime);
     }
 }

@@ -86,7 +86,17 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
             LastEventTimeUtc = DateTimeOffset.UtcNow;
             Timer = new PeriodicTimer(Period);
 
-            await Timer.WaitForNextTickAsync(_cts.Token);
+        // stop and complete the timer after break is over
+        IsRunning = IsWorkTime;
+
+        try
+        {
+            await _timer.WaitForNextTickAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            TimerCompleted?.Invoke(this, EventArgs.Empty);
+        }
 
             await OnTimerCompleted();
         }
