@@ -1,5 +1,8 @@
+using System;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Eddy;
+using Xunit;
 
 namespace test;
 
@@ -82,7 +85,7 @@ public class TaskTimerTest
 
         // When
         // Let time advance by 2 seconds
-        await Assert.ThrowsAsync<TimeoutException>(async () => await task.WaitAsync(TimeSpan.FromSeconds(2) ));
+        await Assert.ThrowsAsync<TimeoutException>(async () => await task.WaitAsync(TimeSpan.FromSeconds(2)));
 
         // Then
         // Timer should have original state, period has not elapsed
@@ -90,5 +93,73 @@ public class TaskTimerTest
         Assert.True(timer.IsRunning);
         Assert.True(timer.IsWorkTime);
         Assert.Equal(10, timer.RemainingTime);
+    }
+
+    [Fact]
+    public async Task BreakTime_ShouldTransitionToBreakTimeAfterWorkDuration()
+    {
+        // Given
+        TaskTimer timer = new() { WorkDuration = 10, BreakDuration = 5 };
+        Task task = timer.StartAsync();
+        await Task.Yield();
+
+        // Wait for work duration to complete
+        await task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // Then
+        Assert.False(timer.IsWorkTime);
+        Assert.Equal(5, timer.RemainingTime);
+    }
+
+    [Fact]
+    public async Task BreakTime_RemainingTimeDecreasesDuringBreak()
+    {
+        // Given
+        TaskTimer timer = new() { WorkDuration = 10, BreakDuration = 5 };
+        Task task = timer.StartAsync();
+        await Task.Yield();
+
+        // Wait for work duration to complete
+        await task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // When
+        await task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        // Then
+        Assert.Equal(3, timer.RemainingTime);
+    }
+
+    [Fact]
+    public async Task BreakTime_TimerCompletesAfterBreakDuration()
+    {
+        // Given
+        TaskTimer timer = new() { WorkDuration = 10, BreakDuration = 5 };
+        Task task = timer.StartAsync();
+        await Task.Yield();
+
+        // Wait for work duration to complete
+        await task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // When
+        await task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Then
+        Assert.False(timer.IsRunning);
+    }
+
+    [Fact]
+    public async Task BreakTime_TimerCyclesWorkAndBreak()
+    {
+        // Given
+        TaskTimer timer = new() { WorkDuration = 5, BreakDuration = 2 };
+        Task task = timer.StartAsync();
+        await Task.Yield();
+
+        // When - Wait for one work/break cycle
+        await task.WaitAsync(TimeSpan.FromSeconds(7));
+
+        // Then
+        Assert.True(timer.IsWorkTime);
+        Assert.Equal(5, timer.RemainingTime);
     }
 }
