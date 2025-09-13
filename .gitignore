@@ -9,7 +9,6 @@
 
 # ignore vstest results folder
 vstest_results
-app/bin/Debug/net8.0/Eddy.deps.json
 
 # ignore mermaid diagram builder scripts in docs folder
 docs/mermaid*.js

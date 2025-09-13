@@ -11,8 +11,8 @@ public class TaskTimer
     public bool IsWorkTime { get; private set; }
     public double RemainingTime { get; private set; }
 
-    public event Action<int>? OnTimeElapsed;
-    public event Action? OnTimerCompleted;
+    public event EventHandler? TimeElapsed;
+    public event EventHandler? TimerCompleted;
 
     /// <summary>
     /// 
@@ -29,6 +29,16 @@ public class TaskTimer
         IsWorkTime = startWithWork;
         // until Start method is called, do not set running timer state
         IsRunning = false;
+    }
+
+    public virtual void OnTimeElapsed(EventArgs e)
+    {
+        TimeElapsed?.Invoke(this, e);
+    }
+
+    public virtual void OnTimerCompleted(EventArgs e)
+    {
+        TimerCompleted?.Invoke(this, e);
     }
 
     public async Task StartAsync()
