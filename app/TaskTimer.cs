@@ -35,12 +35,18 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
         }
     }
 
-    protected virtual async Task OnTimerCompleted()
+    protected virtual Task OnTimerCompleted()
     {
-        if (TimerCompleted != null)
+        LastEventTimeUtc = DateTimeOffset.UtcNow;
+        logger.LogInformation("Timer completed at {LastEventTimeUtc}.", LastEventTimeUtc);
+
+        // reset timer completed state after event handling
+        if (TimerCompleted?.Invoke().IsCompleted == true)
         {
-            await TimerCompleted();
+            timerCompleted = false;
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -50,6 +56,9 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
     {
         if (_cts.Token.CanBeCanceled)
         {
+            LastEventTimeUtc = DateTimeOffset.UtcNow;
+            logger.LogInformation("Timer cancelled at {LastEventTimeUtc}.", LastEventTimeUtc);
+
             await _cts.CancelAsync();
         }
     }
@@ -62,19 +71,24 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
     public async Task StartAsync()
     {
         LastEventTimeUtc = DateTimeOffset.UtcNow;
+        logger.LogInformation("Timer for started at {LastEventTimeUtc} with {Period} remaining.", LastEventTimeUtc, Period);
 
         Timer.Dispose();
         Timer = new(Period);
-        await Timer.WaitForNextTickAsync(_cts.Token);
 
+        await Timer.WaitForNextTickAsync(_cts.Token);
+        
         await OnTimerCompleted();
     }
 
     public void Pause()
     {
         var elapsed = DateTimeOffset.UtcNow - LastEventTimeUtc;
+
         Period -= elapsed;
+
         LastEventTimeUtc = DateTimeOffset.UtcNow;
+        logger.LogInformation("Timer paused at {LastEventTimeUtc}.", LastEventTimeUtc);
 
         Timer.Dispose();
     }
@@ -84,11 +98,9 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
         if (Period > TimeSpan.Zero && !_cts.IsCancellationRequested)
         {
             LastEventTimeUtc = DateTimeOffset.UtcNow;
-            Timer = new PeriodicTimer(Period);
+            logger.LogInformation("Timer resumed at {LastEventTimeUtc} with {Period} remaining.", LastEventTimeUtc, Period);
 
-            await Timer.WaitForNextTickAsync(_cts.Token);
-
-            await OnTimerCompleted();
+            await StartAsync();
         }
     }
 }

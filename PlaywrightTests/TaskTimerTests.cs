@@ -30,5 +30,8 @@ public partial class TaskTimerTests : PageTest
 
         // Check new page state
         await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Pause" })).ToBeEnabledAsync();
+        // Verify timer is running
+        await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Pause" })).ToBeVisibleAsync();
+        await Expect(Page.Locator("p").First).ToContainTextAsync("Time:");
     }
 }

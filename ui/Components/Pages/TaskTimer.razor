@@ -31,7 +31,7 @@
     private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(1);
 
     private ITaskTimer? _taskTimer = new Eddy.TaskTimer(WorkTimeSpan);
-    public TaskTimerState State { get; private set; } = new("Stopped");
+    public TaskTimerState State { get; private set; } = new(TaskTimerStateValue.Stopped);
     public string CurrentPhase { get; private set; } = "Work";
     private string TogglePauseResumeText => State.TimerStatus == "Paused" ? "Resume" : "Pause";
 
@@ -70,12 +70,10 @@
         if (State.TimerStatus == "Paused" && _taskTimer.Period > TimeSpan.Zero)
         {
             await module.InvokeVoidAsync("run", Math.Floor(_taskTimer.Period.TotalSeconds));
-
             State = new("Running");
             StateHasChanged();
-
             await _taskTimer.ResumeAsync();
-            await StartTimerCycleAsync();
+            NextCycle();
         }
         else if (State.TimerStatus == "Running")
         {
@@ -91,13 +89,13 @@
         while (State.IsStopped)
         {
             // only start the timer if it was previously stopped
-            if (CurrentPhase == "Work")
+            if (State.IsStopped && CurrentPhase == "Work")
             {
                 await CreatePhaseTimerAsync(WorkTimeSpan);
             }
 
             // automatically start the break cycle
-            if (CurrentPhase == "Break")
+            if (State.IsStopped && CurrentPhase == "Break")
             {
                 await CreatePhaseTimerAsync(BreakTimeSpan);
             }
@@ -121,10 +119,21 @@
         await _taskTimer.StartAsync();
 
         // Change to the next phase automatically
-        if (State.IsRunning) {
-            CurrentPhase = CurrentPhase == "Break" ? "Work" : "Break";
-            State = new("Stopped");
-            StateHasChanged();
-        }
+        NextCycle();
+    }
+
+    private void NextCycle() {
+        CurrentPhase = State.TimerStatus switch
+        {
+            TaskTimerStateValue.Running => CurrentPhase == "Work" ? "Break" : "Work",
+            TaskTimerStateValue.Paused => CurrentPhase,
+            TaskTimerStateValue.Stopped => CurrentPhase,
+            _ => throw new ArgumentException($"Invalid state detected: {State}"),
+        };
+
+        if (!State.IsPaused)
+            State = new(TaskTimerStateValue.Stopped);
+
+        StateHasChanged();
     }
 }
