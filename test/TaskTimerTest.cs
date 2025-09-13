@@ -1,8 +1,4 @@
-using System;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using Eddy;
-using Xunit;
 
 namespace test;
 
@@ -102,7 +98,7 @@ public class TaskTimerServiceTest
     public async Task BreakTime_TimerCyclesWorkAndBreak()
     {
         // Given
-        TaskTimer timer = new(WorkDuration: 2, BreakDuration: 1);        
+        TaskTimer timer = new(WorkDuration: 2, BreakDuration: 1);
 
         // When - Wait for one work/break cycle
         await timer.StartAsync();
@@ -111,5 +107,32 @@ public class TaskTimerServiceTest
         // Then
         Assert.True(timer.IsWorkTime);
         Assert.Equal(timer.WorkDuration, timer.RemainingTime);
+    }
+    
+    [Fact]
+    public async Task OnTimeElapsed_ShouldTriggerEventWhenTimerStarts()
+    {
+        // Given
+        TaskTimer timer = new(WorkDuration: 1, BreakDuration: 1);
+
+        bool timeElapsed = false;
+
+        void onTimeElapsed(object? sender, EventArgs eventArgs) => timeElapsed = true;
+
+        timer.TimeElapsed += onTimeElapsed;
+
+        try
+        {
+            // When
+            await timer.StartAsync();
+
+            // Then
+            Assert.True(timeElapsed);
+            Assert.True(timer.IsRunning);
+        }
+        finally
+        {
+            timer.TimeElapsed -= onTimeElapsed;
+        }
     }
 }

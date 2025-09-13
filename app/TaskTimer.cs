@@ -48,10 +48,19 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
     /// </summary>
     public async Task CancelAsync()
     {
-        if (_cts.Token.CanBeCanceled)
-        {
-            await _cts.CancelAsync();
-        }
+        _cts.Cancel();
+        OnTimerCompleted(EventArgs.Empty);
+    }
+
+    // write a test for OnTimeElapsed(EventArgs e) in test/TaskTimerTest.cs AI!
+    public virtual void OnTimeElapsed(EventArgs e)
+    {
+        TimeElapsed?.Invoke(this, e);
+    }
+
+    public virtual void OnTimerCompleted(EventArgs e)
+    {
+        TimerCompleted?.Invoke(this, e);
     }
 
     /// <summary>
