@@ -4,30 +4,9 @@
 .planning-docs/todo.txt
 
 # ignore C# compiled object and binaries under source directory
-src/**/obj
-src/**/bin
-test/obj
-test/bin
+*/**/obj
+*/**/bin
 
 # ignore vstest results folder
 vstest_results
-
-# ignore mermaid diagram builder scripts in docs folder
-docs/mermaid*.js
-
-# ignore test results folder from Playwright project
-PlaywrightTests/TestResults/
-
-# exclude mdbook non-source files
-docs/book
-
-# exclude local databases from development
-ui/*.db
-ui/*.db-shm
-ui/*.db-wal
-
-# exclude secrets for docker compose
-secrets/*
-
-# exclude TestResults folder for automation test trx files
-TestResults/*.trx
+app/bin/Debug/net8.0/Eddy.deps.json
