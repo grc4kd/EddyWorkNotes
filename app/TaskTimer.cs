@@ -50,20 +50,18 @@ public class TaskTimer
 
     private async Task UpdateTimeAsync(CancellationToken cancellationToken)
     {
-        try {
-            await _timer.WaitForNextTickAsync(_cts.Token);
-        } catch (OperationCanceledException ex) {
-            Console.Error.WriteLine($"Exception waiting for next timer period to end: {ex.TargetSite} | {ex.Message} | {ex.StackTrace}");
-        }
-        
-        RemainingTime -= _timer.Period.TotalSeconds;
-        IsRunning = false;
-
-        if (!cancellationToken.IsCancellationRequested)
+        if (cancellationToken.IsCancellationRequested)
         {
-            // Auto-switch between work and break
-            IsWorkTime = !IsWorkTime;
-            await StartAsync();
+            return;
         }
+
+        await _timer.WaitForNextTickAsync(_cts.Token);
+    
+        // Auto-switch between work and break
+        IsWorkTime = !IsWorkTime;
+        await StartAsync();
+        
+        RemainingTime = 0;
+        IsRunning = false;
     }
 }

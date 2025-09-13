@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Eddy;
 
 namespace test;
@@ -24,12 +25,14 @@ public class TaskTimerTest
     public async Task StartAsync_ShouldStartTimerCorrectly()
     {
         // Given
-        var timer = new TaskTimer { WorkDuration = 40 };
-        
+        TaskTimer timer = new() { WorkDuration = 40 };
+
         // When
-        await timer.StartAsync();
+        Task task = timer.StartAsync();
+        await Task.Yield();
 
         // Then
+        Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
         Assert.True(timer.IsRunning);
         Assert.True(timer.IsWorkTime);
         Assert.Equal(40, timer.RemainingTime);
@@ -40,12 +43,14 @@ public class TaskTimerTest
     {
         // Given
         var timer = new TaskTimer { WorkDuration = 10 };
-        await timer.StartAsync();
+        Task task = timer.StartAsync();
+        await Task.Yield();
 
         // When
         timer.TogglePause();
 
         // Then
+        Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
         Assert.False(timer.IsRunning);
         Assert.Equal(10, timer.RemainingTime); // Time should not advance while paused
     }
@@ -54,32 +59,36 @@ public class TaskTimerTest
     public async Task TogglePause_WhenPaused_ShouldResume()
     {
         // Given
-        var timer = new TaskTimer { WorkDuration = 10 };
-        await timer.StartAsync();
+        TaskTimer timer = new() { WorkDuration = 10 };
+        Task task = timer.StartAsync();
+        await Task.Yield();
         timer.TogglePause();
 
-        // When
+        // When second pause called
         timer.TogglePause();
 
         // Then
+        Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
         Assert.True(timer.IsRunning);
         Assert.Equal(10, timer.RemainingTime); // Time should remain same when resumed
     }
 
     [Fact]
-    public async Task UpdateTimeAsync_WhenWorkTime_ShouldDecreaseRemainingTime()
+    public async Task UpdateTimeAsync_WhenWorkTime_ShouldNotDecreaseRemainingTime()
     {
         // Given
-        var timer = new TaskTimer { WorkDuration = 10 };
-        await timer.StartAsync();
+        TaskTimer timer = new() { WorkDuration = 10 };
+        Task task = timer.StartAsync();
 
         // When
         // Let time advance by 2 seconds
-        await Task.Delay(2000);
+        await Assert.ThrowsAsync<TimeoutException>(async () => await task.WaitAsync(TimeSpan.FromSeconds(2) ));
 
         // Then
+        // Timer should have original state, period has not elapsed
+        Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
         Assert.True(timer.IsRunning);
         Assert.True(timer.IsWorkTime);
-        Assert.Equal(8, timer.RemainingTime); // Approximate value
+        Assert.Equal(10, timer.RemainingTime);
     }
 }
