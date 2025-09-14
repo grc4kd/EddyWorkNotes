@@ -2,14 +2,13 @@ namespace Eddy;
 
 
 /// <summary>
-/// Defaults to 25 minutes for <see cref="WorkDuration"/>.
-/// Defaults to  5 minutes for <see cref="BreakDuration"/>.
+/// 
 /// </summary>
 /// <param name="WorkDuration"></param>
 /// <param name="BreakDuration"></param>
 /// <param name="IsWorkTime"></param>
 /// <param name="RemainingTime"></param>
-public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime) : IDisposable
+public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
 {
     private CancellationTokenSource _cts = new();
 
@@ -46,6 +45,7 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime) : 
         
     }
 
+    // write a test for OnTimeElapsed(EventArgs e) in test/TaskTimerTest.cs AI!
     public virtual void OnTimeElapsed(EventArgs e)
     {
         TimeElapsed?.Invoke(this, e);
@@ -86,12 +86,10 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime) : 
 
         // switch to break time, then reset timer
         IsWorkTime = !IsWorkTime;
-        ResetTimer();
-    }
 
-    public void Dispose()
-    {
-        TimerCompleted?.Method.Invoke(this, []);
-        GC.SuppressFinalize(this);
+        // raise the time elapsed event to subscribers
+        TimeElapsed?.Invoke(this, null!);
+
+        ResetTimer();
     }
 }
