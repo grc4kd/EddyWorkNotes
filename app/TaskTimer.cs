@@ -45,6 +45,8 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
         
     }
 
+    public void Cancel() => _cts.Cancel();
+
     // write a test for OnTimeElapsed(EventArgs e) in test/TaskTimerTest.cs AI!
     public virtual void OnTimeElapsed(EventArgs e)
     {
@@ -76,6 +78,7 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
     {
         if (cancellationToken.IsCancellationRequested)
         {
+            TimerCompleted?.Invoke(this, EventArgs.Empty);
             return;
         }
 
@@ -88,7 +91,7 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
         IsWorkTime = !IsWorkTime;
 
         // raise the time elapsed event to subscribers
-        TimeElapsed?.Invoke(this, null!);
+        TimeElapsed?.Invoke(this, EventArgs.Empty);
 
         ResetTimer();
     }

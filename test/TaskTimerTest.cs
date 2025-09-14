@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Eddy;
 
 namespace test;
@@ -78,7 +79,15 @@ public class TaskTimerTest
         // When
         // Let time advance by some seconds
         int seconds = 1;
-        await Assert.ThrowsAsync<TimeoutException>(async () => await task.WaitAsync(TimeSpan.FromSeconds(seconds)));
+
+        try
+        {
+            await task.WaitAsync(TimeSpan.FromSeconds(seconds), CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            Assert.IsType<TimeoutException>(exception);
+        }
 
         // Then
         // Timer should have original state, period has not elapsed
@@ -146,7 +155,7 @@ public class TaskTimerTest
         Assert.True(timer.IsWorkTime);
         Assert.Equal(timer.WorkDuration, timer.RemainingTime);
     }
-    
+
     [Fact]
     public async Task OnTimeElapsed_ShouldTriggerEventWhenTimerStarts()
     {
@@ -171,6 +180,45 @@ public class TaskTimerTest
         finally
         {
             timer.TimeElapsed -= onTimeElapsed;
+        }
+    }
+    
+    [Fact]
+    public async Task OnTimerCompleted_ShouldTriggerEventWhenTimerIsCancelled()
+    {
+        // Given
+        TaskTimer timer = new(WorkDuration: 1, BreakDuration: 1);
+
+        bool timerCompleted = false;
+
+        void onTimerCompleted(object? sender, EventArgs eventArgs) => timerCompleted = true;
+
+        timer.TimerCompleted += onTimerCompleted;
+
+        try
+        {
+            // When
+            var task = Task.Run(timer.StartAsync);
+
+            try
+            {
+                timer.Cancel();
+            }
+            catch (Exception e)
+            {
+                Assert.IsType<OperationCanceledException>(e);
+            }
+            
+            await task;
+
+            // Then
+            Assert.False(task.IsCanceled);
+            Assert.True(timerCompleted);
+            Assert.True(timer.IsRunning);
+        }
+        finally
+        {
+            timer.TimeElapsed -= onTimerCompleted;
         }
     }
 }
