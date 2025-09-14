@@ -10,7 +10,7 @@ namespace Eddy;
 /// <param name="RemainingTime"></param>
 public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
 {
-    private CancellationTokenSource _cts = new();
+    private CancellationTokenSource _cts;
 
     public int WorkDuration { get; set; } = WorkDuration;
     public int BreakDuration { get; set; } = BreakDuration;
@@ -45,7 +45,11 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
         
     }
 
-    public void Cancel() => _cts.Cancel();
+    public void Cancel()
+    {
+        _cts?.Cancel();
+        OnTimerCompleted(this, new EventArgs());
+    }
 
     // write a test for OnTimeElapsed(EventArgs e) in test/TaskTimerTest.cs AI!
     public virtual void OnTimeElapsed(EventArgs e)
@@ -76,23 +80,30 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
 
     private async Task UpdateTimeAsync(CancellationToken cancellationToken)
     {
-        if (cancellationToken.IsCancellationRequested)
+        try
         {
-            TimerCompleted?.Invoke(this, EventArgs.Empty);
-            return;
+            if (cancellationToken.IsCancellationRequested)
+            {
+                TimerCompleted?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            // Stop and complete the timer after break is over
+            IsRunning = IsWorkTime;
+
+            await _timer.WaitForNextTickAsync(cancellationToken);
+
+            // Switch to break time, then reset timer
+            IsWorkTime = !IsWorkTime;
+
+            // Raise the time elapsed event to subscribers
+            TimeElapsed?.Invoke(this, EventArgs.Empty);
+
+            ResetTimer();
         }
-
-        // stop and complete the timer after break is over
-        IsRunning = IsWorkTime;
-
-        await _timer.WaitForNextTickAsync(_cts.Token);
-
-        // switch to break time, then reset timer
-        IsWorkTime = !IsWorkTime;
-
-        // raise the time elapsed event to subscribers
-        TimeElapsed?.Invoke(this, EventArgs.Empty);
-
-        ResetTimer();
+        catch (OperationCanceledException)
+        {
+            TimerCompleted?.Invoke(this, new CancelEventArgs(true));
+        }
     }
 }

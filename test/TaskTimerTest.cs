@@ -199,26 +199,21 @@ public class TaskTimerTest
         {
             // When
             var task = Task.Run(timer.StartAsync);
-
-            try
-            {
-                timer.Cancel();
-            }
-            catch (Exception e)
-            {
-                Assert.IsType<OperationCanceledException>(e);
-            }
+            
+            await task.WaitAsync(TimeSpan.FromMilliseconds(100));
+            
+            timer.Cancel();
             
             await task;
 
             // Then
-            Assert.False(task.IsCanceled);
+            Assert.True(task.IsCanceled);
             Assert.True(timerCompleted);
-            Assert.True(timer.IsRunning);
+            Assert.False(timer.IsRunning);
         }
         finally
         {
-            timer.TimeElapsed -= onTimerCompleted;
+            timer.TimerCompleted -= onTimerCompleted;
         }
     }
 }
