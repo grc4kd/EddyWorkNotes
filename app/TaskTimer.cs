@@ -10,7 +10,7 @@ namespace Eddy;
 /// <param name="RemainingTime"></param>
 public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
 {
-    private CancellationTokenSource _cts;
+    private readonly CancellationTokenSource _cts = new();
 
     public int WorkDuration { get; set; } = WorkDuration;
     public int BreakDuration { get; set; } = BreakDuration;
@@ -26,29 +26,39 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
     /// <param name="IsWorkTime"></param>
     public TaskTimer(bool IsWorkTime, int WorkDuration, int BreakDuration) : this(WorkDuration, BreakDuration, IsWorkTime)
     {
-        ResetTimer();
+
+    }
+    public TaskTimer(int WorkDuration, int BreakDuration) : this(IsWorkTime: true, WorkDuration, BreakDuration)
+    {
+
     }
 
     private void ResetTimer()
     {
-        _timer = new(TimeSpan.FromSeconds(IsWorkTime switch
+        if (IsWorkTime)
         {
-            true => WorkDuration,
-            false => BreakDuration
-        }));
+            TimeSpan initialTimeSpan = WorkDuration > 0 ?
+                TimeSpan.FromSeconds(WorkDuration) :
+                TimeSpan.FromMilliseconds(1);
+
+            _timer = new(initialTimeSpan);
+        }
+        else
+        {
+            TimeSpan initialTimeSpan = BreakDuration > 0 ?
+                TimeSpan.FromSeconds(BreakDuration) :
+                TimeSpan.FromMilliseconds(1);
+
+            _timer = new(initialTimeSpan);
+        }
 
         RemainingTime = _timer.Period.TotalSeconds;
     }
 
-    public TaskTimer(int WorkDuration, int BreakDuration) : this(IsWorkTime: true, WorkDuration, BreakDuration)
-    {
-        
-    }
-
     public void Cancel()
     {
-        _cts?.Cancel();
-        OnTimerCompleted(this, new EventArgs());
+        _cts.Cancel();
+        OnTimerCompleted(EventArgs.Empty);
     }
 
     // write a test for OnTimeElapsed(EventArgs e) in test/TaskTimerTest.cs AI!
@@ -74,7 +84,7 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
 
     public void TogglePause()
     {
-        _cts?.Cancel();
+        _cts.Cancel();
         IsRunning = !IsRunning;
     }
 
@@ -103,7 +113,7 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
         }
         catch (OperationCanceledException)
         {
-            TimerCompleted?.Invoke(this, new CancelEventArgs(true));
+            TimerCompleted?.Invoke(this, EventArgs.Empty);
         }
     }
 }
