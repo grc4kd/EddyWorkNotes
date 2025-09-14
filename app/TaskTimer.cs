@@ -52,7 +52,6 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
         OnTimerCompleted(EventArgs.Empty);
     }
 
-    // write a test for OnTimeElapsed(EventArgs e) in test/TaskTimerTest.cs AI!
     public virtual void OnTimeElapsed(EventArgs e)
     {
         TimeElapsed?.Invoke(this, e);
