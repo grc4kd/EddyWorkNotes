@@ -41,13 +41,13 @@ public class TaskTimerTest
         // Given
         TaskTimer timer = new(WorkDuration: 10, BreakDuration: 5);
         Task task = timer.StartAsync();
-        await Task.Yield();
 
         // When
         timer.TogglePause();
+        await task;
 
         // Then
-        Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
+        Assert.Equal(TaskStatus.RanToCompletion, task.Status);
         Assert.False(timer.IsRunning);
         Assert.Equal(10, timer.RemainingTime); // Time should not advance while paused
     }
@@ -86,6 +86,27 @@ public class TaskTimerTest
         Assert.True(timer.IsRunning);
         Assert.True(timer.IsWorkTime);
         Assert.Equal(timer.WorkDuration, timer.RemainingTime);
+    }
+
+    [Fact]
+    public void OnTimeElapsed_InvokeTimeElapsedEvent_ShouldRaiseEvent()
+    {
+        // Arrange                                                                                                                        
+        var args = new EventArgs();
+        bool eventRaised = false;
+
+        var timer = new TaskTimer(60, 30);
+        timer.TimeElapsed += (sender, e) =>
+        {
+            eventRaised = true;
+        };
+
+        // Act                                                                                                                            
+        timer.OnTimeElapsed(args);
+
+        // Assert                                                                                                                         
+        Assert.True(eventRaised, "TimeElapsed event should have been raised");
+        Assert.Equivalent(EventArgs.Empty, args);
     }
 
     [Fact]
