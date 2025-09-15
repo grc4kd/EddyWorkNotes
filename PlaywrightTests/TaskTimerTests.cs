@@ -1,13 +1,15 @@
-using Microsoft.Playwright;
 using System.Threading.Tasks;
-using Xunit;
+using Microsoft.Playwright.MSTest;
 
+namespace PlaywrightTests;
+
+[TestClass]
 public partial class TaskTimerTests : PageTest
 {
-    [Fact]
+    [TestMethod]
     public async Task TaskTimer_Should_StartAndPause_Correctly()
     {
-        await Page.GotoAsync("http://localhost:5085/tasktimer");
+        await Page.GotoAsync("http://localhost:5000/tasktimer");
         
         // Verify initial state
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Task Timer" })).ToBeVisibleAsync();
