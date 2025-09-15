@@ -1,7 +1,5 @@
 @page "/tasktimer"
 @rendermode InteractiveServer
-@implements IAsyncDisposable
-@inject IJSRuntime JS
 
 <PageTitle>Task Timer</PageTitle>
 
@@ -10,56 +8,39 @@
 <div class="card" style="width: 400px;">
     <div class="card-body">
         <h3 class="card-title">Pomodoro Timer</h3>
-
-        <div class="mb-3">
-            <p>Remaining Time:&nbsp 
-                <span id='timerDisplay'>@FormatTime(_taskTimer.RemainingTime)</span>
-            </p>
-            <p>Current Phase: @(_taskTimer.IsWorkTime ? "Work" : "Break")</p>
-            <p>Status: @TimerStatus</p>
-        </div>
-
-        <button @onclick="StartTimer" id="startTimerBtn" class="btn btn-primary me-2">
-            Start
-        </button>
         
-        <button @onclick="TogglePause" id="togglePauseBtn" class="btn btn-warning">
-            @(_taskTimer.IsRunning ? "Pause" : "Resume")
-        </button>
+        @if (IsInitialized)
+        {
+            <div class="mb-3">
+                <p>Remaining Time: @FormatTime(CurrentRemainingTime)</p>
+                <p>Current Phase: @(_taskTimer.IsWorkTime ? "Work" : "Break")</p>
+                <p>Status: @TimerStatus</p>
+            </div>
+            
+            <button @onclick="StartTimer" class="btn btn-primary me-2">
+                Start
+            </button>
+            
+            <button @onclick="TogglePause" class="btn btn-warning">
+                @(_taskTimer.IsRunning ? "Pause" : "Resume")
+            </button>
+        }
     </div>
 </div>
 
 @code {
     private Eddy.TaskTimer _taskTimer = new Eddy.TaskTimer(25, 5);
+    private bool IsInitialized { get; set; } = false;
     private string TimerStatus { get; set; } = "Idle";
-    private double CurrentRemainingTime { get; set; } = 25;
-    private IJSObjectReference? module;
+    private double CurrentRemainingTime { get; set; } = 0;
 
-    protected async override Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        if (firstRender)
-        {
-            module = await JS.InvokeAsync<IJSObjectReference>("import",
-            "./Components/Pages/TaskTimer.razor.js");
+        IsInitialized = true;
+        CurrentRemainingTime = _taskTimer.RemainingTime;
+        StateHasChanged();
 
-            bool isWorkTime = _taskTimer.IsWorkTime;
-            int[] timeArgs = [_taskTimer.WorkDuration, _taskTimer.BreakDuration];
-            await module.InvokeVoidAsync("addHandlers", isWorkTime, timeArgs);
-        }
-    }
-
-    async ValueTask IAsyncDisposable.DisposeAsync()
-    {
-        if (module is not null)
-        {
-            try
-            {
-                await module.DisposeAsync();
-            }
-            catch (JSDisconnectedException)
-            {
-            }
-        }
+        await Task.Yield();
     }
 
     private async Task StartTimer()
@@ -71,11 +52,20 @@
 
             // Capture the initial remaining time
             CurrentRemainingTime = _taskTimer.RemainingTime;
-
+            
             await _taskTimer.StartAsync().ConfigureAwait(false);
-
+            
+            // Update UI while timer runs
+            while (_taskTimer.IsRunning)
+            {
+                CurrentRemainingTime = _taskTimer.RemainingTime;
+                StateHasChanged();
+                await Task.Delay(100); // Update every 100ms
+            }
+            
             // Final update when timer completes
             CurrentRemainingTime = _taskTimer.RemainingTime;
+            StateHasChanged();
         }
     }
 
@@ -89,8 +79,8 @@
     private string FormatTime(double seconds)
     {
         int minutes = (int)(seconds / 60);
-        int remainingSeconds = (int)seconds % 60;
-
-        return $"{minutes:D2}:{remainingSeconds:D2}";
+        double remainingSeconds = seconds % 60;
+        
+        return $"{minutes:D2}:{remainingSeconds:N1}";
     }
 }
