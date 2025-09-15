@@ -12,8 +12,8 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
 {
     private readonly CancellationTokenSource _cts = new();
 
-    public int WorkDuration { get; set; } = WorkDuration;
-    public int BreakDuration { get; set; } = BreakDuration;
+    public int WorkDuration { get; } = WorkDuration;
+    public int BreakDuration { get; } = BreakDuration;
     public bool IsRunning { get; set; } = false;
     public bool IsWorkTime { get; set; } = IsWorkTime;
     public double RemainingTime { get; set; }
@@ -61,7 +61,6 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
         OnTimerCompleted(EventArgs.Empty);
     }
 
-    // write a test for OnTimeElapsed(EventArgs e) in test/TaskTimerTest.cs AI!
     public virtual void OnTimeElapsed(EventArgs e)
     {
         TimeElapsed?.Invoke(this, e);
@@ -76,6 +75,8 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
     {
         ResetTimer();
 
+        // write a test that checks when `_cts.IsCancellationRequested` is assumed true
+        // and this if-statement then calls the `TogglePause()` method as a consequence AI!
         if (_cts.IsCancellationRequested)
             TogglePause();
 
@@ -90,30 +91,28 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
 
     private async Task UpdateTimeAsync(CancellationToken cancellationToken)
     {
-        try
+        if (!cancellationToken.IsCancellationRequested)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                TimerCompleted?.Invoke(this, EventArgs.Empty);
-                return;
-            }
-
             // Stop and complete the timer after break is over
             IsRunning = IsWorkTime;
+        }
 
+        try
+        {
             await _timer.WaitForNextTickAsync(cancellationToken);
-
-            // Switch to break time, then reset timer
-            IsWorkTime = !IsWorkTime;
-
-            // Raise the time elapsed event to subscribers
-            TimeElapsed?.Invoke(this, EventArgs.Empty);
-
-            ResetTimer();
         }
         catch (OperationCanceledException)
         {
             TimerCompleted?.Invoke(this, EventArgs.Empty);
+        }
+
+        if (!cancellationToken.IsCancellationRequested)
+        {
+            // Switch to break time, then rescet timer
+            IsWorkTime = !IsWorkTime;
+            // Raise the time elapsed event to subscribers
+            OnTimeElapsed(EventArgs.Empty);
+            ResetTimer();
         }
     }
 }

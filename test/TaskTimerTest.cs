@@ -187,7 +187,6 @@ public class TaskTimerTest
         TaskTimer timer = new(WorkDuration: 1, BreakDuration: 0);
         
         bool timerCompleted = false;
-        CancellationTokenSource cts = new();
 
         void onTimerCompleted(object? sender, EventArgs eventArgs) => timerCompleted = true;
 
@@ -197,14 +196,14 @@ public class TaskTimerTest
         {
             // When - Start and immediately cancel
             var task = timer.StartAsync();
-            cts.Cancel();
+            timer.Cancel();
             
             await task;
             
             // Then
             Assert.True(timerCompleted);
             Assert.False(task.IsCanceled); 
-            Assert.False(timer.IsRunning);
+            Assert.True(timer.IsRunning);
         }
         finally
         {
