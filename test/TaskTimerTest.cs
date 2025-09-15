@@ -181,6 +181,38 @@ public class TaskTimerTest
     }
     
     [Fact]
+    public async Task StartAsync_WithCancellation_ShouldTriggerTimerCompletedEvent()
+    {
+        // Given
+        TaskTimer timer = new(WorkDuration: 1, BreakDuration: 0);
+        
+        bool timerCompleted = false;
+        CancellationTokenSource cts = new();
+
+        void onTimerCompleted(object? sender, EventArgs eventArgs) => timerCompleted = true;
+
+        timer.TimerCompleted += onTimerCompleted;
+
+        try
+        {
+            // When - Start and immediately cancel
+            var task = timer.StartAsync();
+            cts.Cancel();
+            
+            await task;
+            
+            // Then
+            Assert.True(timerCompleted);
+            Assert.False(task.IsCanceled); 
+            Assert.False(timer.IsRunning);
+        }
+        finally
+        {
+            timer.TimerCompleted -= onTimerCompleted;
+        }
+    }
+
+    [Fact]
     public async Task OnTimerCompleted_ShouldTriggerEventWhenTimerIsCancelled()
     {
         // Given
