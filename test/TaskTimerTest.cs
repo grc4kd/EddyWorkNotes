@@ -143,6 +143,23 @@ public class TaskTimerServiceTest
     }
     
     [Fact]
+    public async Task StartAsync_WhenCancelled_ShouldTogglePause()
+    {
+        // Given
+        var timer = new TaskTimer(WorkDuration: 1, BreakDuration: 0);
+
+        // When - Start and immediately cancel
+        var task = timer.StartAsync();
+        timer.Cancel();
+
+        await task;
+
+        // Then
+        Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+        Assert.True(timer.IsRunning);
+    }
+
+    [Fact]
     public async Task StartAsync_WithCancellation_ShouldTriggerTimerCompletedEvent()
     {
         // Given
@@ -194,8 +211,8 @@ public class TaskTimerServiceTest
 
             // Then
             Assert.False(task.IsCanceled);
-            // Timer stops with existing state
-            Assert.True(timer.IsRunning);
+            // Timer stops when cancelled
+            Assert.False(timer.IsRunning);
             // Timer marked as completed when disposed
             Assert.True(timerCompleted);
         }
