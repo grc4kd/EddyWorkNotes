@@ -11,6 +11,8 @@ namespace Eddy;
 public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
 {
     private readonly CancellationTokenSource _cts = new();
+    private static DateTimeOffset lastEventTimeUtc = DateTimeOffset.UtcNow;
+    private static PeriodicTimer _timer = new(TimeSpan.FromMilliseconds(1));
 
     public int WorkDuration { get; } = WorkDuration;
     public int BreakDuration { get; } = BreakDuration;
@@ -21,7 +23,6 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
     public event EventHandler? TimeElapsed;
     public event EventHandler? TimerCompleted;
 
-    private static PeriodicTimer _timer = new(TimeSpan.FromMilliseconds(1));
 
     /// <param name="IsWorkTime"></param>
     public TaskTimer(bool IsWorkTime, int WorkDuration, int BreakDuration) : this(WorkDuration, BreakDuration, IsWorkTime)
@@ -35,6 +36,8 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
 
     private void ResetTimer()
     {
+        lastEventTimeUtc = DateTimeOffset.UtcNow;
+
         if (IsWorkTime)
         {
             TimeSpan initialTimeSpan = WorkDuration > 0 ?
@@ -75,17 +78,22 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
     {
         ResetTimer();
 
-        // If cancellation was requested, toggle pause immediately
-        if (_cts.IsCancellationRequested)
-            TogglePause();
-
-        await UpdateTimeAsync(_cts.Token);
+        // If cancellation was requested, skip clock time updates
+        if (!_cts.IsCancellationRequested)
+        {
+            await UpdateTimeAsync(_cts.Token);
+        }
     }
 
     public void TogglePause()
     {
-        _cts.Cancel();
+        double elapsedTime = DateTimeOffset.UtcNow.Subtract(lastEventTimeUtc).TotalSeconds;
+        RemainingTime -= elapsedTime;
+
         IsRunning = !IsRunning;
+        lastEventTimeUtc = DateTimeOffset.UtcNow;
+        
+        Cancel();
     }
 
     private async Task UpdateTimeAsync(CancellationToken cancellationToken)
