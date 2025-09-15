@@ -181,6 +181,25 @@ public class TaskTimerTest
     }
     
     [Fact]
+    public async Task StartAsync_WhenCancelled_ShouldTogglePause()
+    {
+        // Given
+        var timer = new TaskTimer(WorkDuration: 1, BreakDuration: 0);
+        
+        bool togglePauseCalled = false;
+        timer.TogglePause = () => togglePauseCalled = true;
+
+        // When - Start and immediately cancel
+        var task = timer.StartAsync();
+        timer.Cancel();
+
+        await task;
+
+        // Then
+        Assert.True(togglePauseCalled);
+    }
+
+    [Fact]
     public async Task StartAsync_WithCancellation_ShouldTriggerTimerCompletedEvent()
     {
         // Given

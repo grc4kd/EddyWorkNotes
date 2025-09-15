@@ -75,8 +75,7 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
     {
         ResetTimer();
 
-        // write a test that checks when `_cts.IsCancellationRequested` is assumed true
-        // and this if-statement then calls the `TogglePause()` method as a consequence AI!
+        // If cancellation was requested, toggle pause immediately
         if (_cts.IsCancellationRequested)
             TogglePause();
 
