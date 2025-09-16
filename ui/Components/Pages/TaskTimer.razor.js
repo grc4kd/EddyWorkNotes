@@ -1,11 +1,10 @@
 let timerInterval;
 let remainingTime;
-let isRunning = false;
+let isRunning;
 
 function startTimer(minutes) {
     remainingTime = minutes * 60;
     updateDisplay();
-    
     if (remainingTime > 0) {
         timerInterval = setInterval(updateTimer, 1000);
         isRunning = true;
@@ -14,24 +13,20 @@ function startTimer(minutes) {
 
 function togglePause() {
     if (isRunning) {
-        // Pause the timer
         clearInterval(timerInterval);
-        isRunning = false;
-    } else if (!isRunning && remainingTime > 0) {
-        // Resume the timer
-        timerInterval = setInterval(updateTimer, 1000);
-        isRunning = true;
     }
+
+    if (!isRunning & remainingTime > 0) {
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    isRunning = !isRunning;
 }
 
 function updateTimer() {
     if (remainingTime <= 1) {
         clearInterval(timerInterval);
-        remainingTime = 0;
-        updateDisplay();
-        return;
     }
-    
     remainingTime--;
     updateDisplay();
 }
@@ -47,19 +42,14 @@ function formatMinutes(seconds) {
     return `${minutes.toString().padStart(2, '0')}:${secs.toFixed(0).padStart(2, '0')}`;
 }
 
-export function addHandlers(isWorkTime, [workDuration, breakDuration]) {
+export function addHandlers([workDuration, breakDuration]) {
     const startTimerBtn = document.getElementById('startTimerBtn');
     const togglePauseBtn = document.getElementById('togglePauseBtn');
 
     startTimerBtn.addEventListener('click', function () {
-        if (isWorkTime) {
-            startTimer(workDuration);
-        } else {
-            startTimer(breakDuration);
-        }
+        startTimer(workDuration);
     });
-    
     togglePauseBtn.addEventListener('click', function () {
         togglePause();
-    });
+    })
 }

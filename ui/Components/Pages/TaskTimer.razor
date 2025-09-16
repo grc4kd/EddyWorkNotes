@@ -2,8 +2,14 @@
 @page "/tasktimer"
 =======
 ﻿@page "/tasktimer"
+<<<<<<< HEAD
 >>>>>>> 6daffb2 (feat: move timer logic to client-side)
+=======
+@using System.Runtime.InteropServices.JavaScript
+>>>>>>> 2263b79 (feat: add JavaScript interop for client-side timer handling)
 @rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
 <PageTitle>Task Timer</PageTitle>
 
@@ -17,19 +23,25 @@
         {
             <div class="mb-3">
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <p>Remaining Time: @FormatTime(CurrentRemainingTime)</p>
 =======
                 <p>Remaining Time: @FormatTime(_taskTimer.RemainingTime)</p>
 >>>>>>> 6daffb2 (feat: move timer logic to client-side)
+=======
+                <p>Remaining Time:&nbsp 
+                    <span id='timerDisplay'>@FormatTime(_taskTimer.RemainingTime)</span>
+                </p>
+>>>>>>> 2263b79 (feat: add JavaScript interop for client-side timer handling)
                 <p>Current Phase: @(_taskTimer.IsWorkTime ? "Work" : "Break")</p>
                 <p>Status: @TimerStatus</p>
             </div>
             
-            <button @onclick="StartTimer" class="btn btn-primary me-2">
+            <button @onclick="StartTimer" id="startTimerBtn" class="btn btn-primary me-2">
                 Start
             </button>
             
-            <button @onclick="TogglePause" class="btn btn-warning">
+            <button @onclick="TogglePause" id="togglePauseBtn" class="btn btn-warning">
                 @(_taskTimer.IsRunning ? "Pause" : "Resume")
             </button>
         }
@@ -41,21 +53,54 @@
     private bool IsInitialized { get; set; } = false;
     private string TimerStatus { get; set; } = "Idle";
 <<<<<<< HEAD
+<<<<<<< HEAD
     private double CurrentRemainingTime { get; set; } = 0;
 =======
 >>>>>>> 6daffb2 (feat: move timer logic to client-side)
+=======
+    private IJSObjectReference? module;
+>>>>>>> 2263b79 (feat: add JavaScript interop for client-side timer handling)
 
     protected override async Task OnInitializedAsync()
     {
         IsInitialized = true;
 <<<<<<< HEAD
+<<<<<<< HEAD
         CurrentRemainingTime = _taskTimer.RemainingTime;
 =======
         
 >>>>>>> 6daffb2 (feat: move timer logic to client-side)
+=======
+
+>>>>>>> 2263b79 (feat: add JavaScript interop for client-side timer handling)
         StateHasChanged();
 
         await Task.Yield();
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        if (module is not null)
+        {
+            try
+            {
+                await module.DisposeAsync();
+            } catch (JSDisconnectedException)
+            {
+            }
+        }
+    }
+
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            module = await JS.InvokeAsync<IJSObjectReference>("import",
+                "./Components/Pages/TaskTimer.razor.js");
+
+            int[] timeArgs = [_taskTimer.WorkDuration, _taskTimer.BreakDuration];
+            await module.InvokeVoidAsync("addHandlers", timeArgs);
+        }
     }
 
     private async Task StartTimer()
@@ -63,6 +108,7 @@
         if (!_taskTimer.IsRunning)
         {
             TimerStatus = $"Started {(_taskTimer.IsWorkTime ? "work" : "break")} timer";
+<<<<<<< HEAD
 <<<<<<< HEAD
             StateHasChanged();
 
@@ -85,24 +131,32 @@
 =======
             await JSRuntime.InvokeVoidAsync("startTimer", _taskTimer.RemainingTime);
 >>>>>>> 6daffb2 (feat: move timer logic to client-side)
+=======
+>>>>>>> 2263b79 (feat: add JavaScript interop for client-side timer handling)
         }
+
+        await _taskTimer.StartAsync().ConfigureAwait(false);
     }
 
     private void TogglePause()
     {
         _taskTimer.TogglePause();
+<<<<<<< HEAD
         TimerStatus = _taskTimer.IsRunning ? "Paused" : "Resumed";
 <<<<<<< HEAD
         StateHasChanged();
 =======
 >>>>>>> 6daffb2 (feat: move timer logic to client-side)
+=======
+        TimerStatus = _taskTimer.IsRunning ? "Resumed": "Paused";
+>>>>>>> 2263b79 (feat: add JavaScript interop for client-side timer handling)
     }
 
     private string FormatTime(double seconds)
     {
         int minutes = (int)(seconds / 60);
-        double remainingSeconds = seconds % 60;
+        int remainingSeconds = (int)Math.Floor(seconds % 60);
         
-        return $"{minutes:D2}:{remainingSeconds:N1}";
+        return $"{minutes:D2}:{remainingSeconds:D2}";
     }
 }
