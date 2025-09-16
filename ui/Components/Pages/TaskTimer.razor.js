@@ -47,12 +47,16 @@ function formatMinutes(seconds) {
     return `${minutes.toString().padStart(2, '0')}:${secs.toFixed(0).padStart(2, '0')}`;
 }
 
-export function addHandlers([workDuration, breakDuration]) {
+export function addHandlers(isWorkTime, [workDuration, breakDuration]) {
     const startTimerBtn = document.getElementById('startTimerBtn');
     const togglePauseBtn = document.getElementById('togglePauseBtn');
 
     startTimerBtn.addEventListener('click', function () {
-        startTimer(workDuration);
+        if (isWorkTime) {
+            startTimer(workDuration);
+        } else {
+            startTimer(breakDuration);
+        }
     });
     
     togglePauseBtn.addEventListener('click', function () {
