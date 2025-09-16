@@ -1,10 +1,11 @@
 let timerInterval;
 let remainingTime;
-let isRunning;
+let isRunning = false;
 
 function startTimer(minutes) {
     remainingTime = minutes * 60;
     updateDisplay();
+    
     if (remainingTime > 0) {
         timerInterval = setInterval(updateTimer, 1000);
         isRunning = true;
@@ -13,20 +14,24 @@ function startTimer(minutes) {
 
 function togglePause() {
     if (isRunning) {
+        // Pause the timer
         clearInterval(timerInterval);
-    }
-
-    if (!isRunning & remainingTime > 0) {
+        isRunning = false;
+    } else if (!isRunning && remainingTime > 0) {
+        // Resume the timer
         timerInterval = setInterval(updateTimer, 1000);
+        isRunning = true;
     }
-
-    isRunning = !isRunning;
 }
 
 function updateTimer() {
     if (remainingTime <= 1) {
         clearInterval(timerInterval);
+        remainingTime = 0;
+        updateDisplay();
+        return;
     }
+    
     remainingTime--;
     updateDisplay();
 }
@@ -49,7 +54,8 @@ export function addHandlers([workDuration, breakDuration]) {
     startTimerBtn.addEventListener('click', function () {
         startTimer(workDuration);
     });
+    
     togglePauseBtn.addEventListener('click', function () {
         togglePause();
-    })
+    });
 }
