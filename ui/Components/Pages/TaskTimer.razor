@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 @page "/tasktimer"
+=======
+﻿@page "/tasktimer"
+>>>>>>> 6daffb2 (feat: move timer logic to client-side)
 @rendermode InteractiveServer
 
 <PageTitle>Task Timer</PageTitle>
@@ -12,7 +16,11 @@
         @if (IsInitialized)
         {
             <div class="mb-3">
+<<<<<<< HEAD
                 <p>Remaining Time: @FormatTime(CurrentRemainingTime)</p>
+=======
+                <p>Remaining Time: @FormatTime(_taskTimer.RemainingTime)</p>
+>>>>>>> 6daffb2 (feat: move timer logic to client-side)
                 <p>Current Phase: @(_taskTimer.IsWorkTime ? "Work" : "Break")</p>
                 <p>Status: @TimerStatus</p>
             </div>
@@ -32,12 +40,19 @@
     private Eddy.TaskTimer _taskTimer = new Eddy.TaskTimer(25, 5);
     private bool IsInitialized { get; set; } = false;
     private string TimerStatus { get; set; } = "Idle";
+<<<<<<< HEAD
     private double CurrentRemainingTime { get; set; } = 0;
+=======
+>>>>>>> 6daffb2 (feat: move timer logic to client-side)
 
     protected override async Task OnInitializedAsync()
     {
         IsInitialized = true;
+<<<<<<< HEAD
         CurrentRemainingTime = _taskTimer.RemainingTime;
+=======
+        
+>>>>>>> 6daffb2 (feat: move timer logic to client-side)
         StateHasChanged();
 
         await Task.Yield();
@@ -48,6 +63,7 @@
         if (!_taskTimer.IsRunning)
         {
             TimerStatus = $"Started {(_taskTimer.IsWorkTime ? "work" : "break")} timer";
+<<<<<<< HEAD
             StateHasChanged();
 
             // Capture the initial remaining time
@@ -66,6 +82,9 @@
             // Final update when timer completes
             CurrentRemainingTime = _taskTimer.RemainingTime;
             StateHasChanged();
+=======
+            await JSRuntime.InvokeVoidAsync("startTimer", _taskTimer.RemainingTime);
+>>>>>>> 6daffb2 (feat: move timer logic to client-side)
         }
     }
 
@@ -73,7 +92,10 @@
     {
         _taskTimer.TogglePause();
         TimerStatus = _taskTimer.IsRunning ? "Paused" : "Resumed";
+<<<<<<< HEAD
         StateHasChanged();
+=======
+>>>>>>> 6daffb2 (feat: move timer logic to client-side)
     }
 
     private string FormatTime(double seconds)
