@@ -15,3 +15,6 @@ docs/mermaid*.js
 
 # ignore test results folder from Playwright project
 PlaywrightTests/TestResults/
+
+# exclude mdbook non-source files
+docs/book

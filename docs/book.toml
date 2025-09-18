@@ -1,8 +1,8 @@
 [book]
-authors = ["Griffin Crane"]
+authors = ["Your Name"]
 language = "en"
 src = "src"
-title = "Eddy, the personal management assistant."
+title = "Design Doc - Eddy"
 
 [preprocessor]
 
