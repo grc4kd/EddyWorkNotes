@@ -1,18 +1,18 @@
 class TimerManager {
     static #INTERVAL_DELAY = 1000;
 
-    #timerInterval;
-    #remainingTime;
+    #durationMinutes;
+    #remainingTimeMinutes;
     #isRunning;
 
     constructor(durationMinutes) {
-        this.#timerInterval = durationMinutes;
-        this.#remainingTime = durationMinutes * 60;
+        this.#durationMinutes = durationMinutes;
+        this.#remainingTimeMinutes = durationMinutes * 60;
         this.#isRunning = false;
     }
 
     // format total seconds into whole minutes and seconds in MM:SS format
-    formatMinutes(seconds) {
+    formatTime(seconds) {
         const formatMM = Math.floor(seconds / 60).toString().padStart(2, '0');
         const formatSS = (seconds % 60).toFixed(0).padStart(2, '0');
 
@@ -22,41 +22,41 @@ class TimerManager {
     updateDisplay() {
         const display = document.getElementById('timerDisplay');
         if (display) {
-            display.textContent = `${this.formatMinutes(this.#remainingTime)} remaining`;
+            display.textContent = `${this.formatTime(this.#remainingTimeMinutes)} remaining`;
         }
     }
 
-    resetTimer() {
-        clearInterval(this.#timerInterval);
-        this.#remainingTime = 0;
+    reset() {
+        clearInterval(this.#durationMinutes);
+        this.#remainingTimeMinutes = 0;
         this.updateDisplay();
     }
 
-    updateTimer() {
-        if (this.#remainingTime <= 1) {
-            this.resetTimer();
+    tick() {
+        if (this.#remainingTimeMinutes <= 1) {
+            this.reset();
             return;
         }
 
-        this.#remainingTime--;
+        this.#remainingTimeMinutes--;
         this.updateDisplay();
+        this.setInterval(TimerManager.#INTERVAL_DELAY);
     }
 
-    startTimer() {
-        if (this.#remainingTime > 0) {
-            this.#timerInterval = setInterval(() => this.updateTimer(), TimerManager.#INTERVAL_DELAY);
+    start() {
+        if (this.#remainingTimeMinutes > 0) {
+            this.#durationMinutes = setInterval(() => this.tick(), TimerManager.#INTERVAL_DELAY);
             this.#isRunning = true;
-            this.updateDisplay();
         }
     }
 
     pause() {
-        clearInterval(this.#timerInterval);
+        clearInterval(this.#durationMinutes);
         this.#isRunning = false;
     }
 
     resume() {
-        this.#timerInterval = setInterval(() => this.updateTimer(), TimerManager.#INTERVAL_DELAY);
+        this.#durationMinutes = setInterval(() => this.tick(), TimerManager.#INTERVAL_DELAY);
         this.#isRunning = true;
     }
 
@@ -68,13 +68,20 @@ class TimerManager {
         }
     }
 
-    initEventListeners() {
-        document.getElementById('startTimerBtn')?.addEventListener('click', () => this.startTimer(this.#timerInterval));
+    addHandlers() {
+        document.getElementById('startTimerBtn')?.addEventListener('click', () => this.start());
         document.getElementById('togglePauseBtn')?.addEventListener('click', () => this.togglePause());
     }
 }
 
-export function createTimerManager(durationMinutes) {
-    const timerManager = new TimerManager(durationMinutes);
-    timerManager.initEventListeners();
+let timerManager;
+export function addHandlers(durationMinutes) {
+    timerManager = new TimerManager(durationMinutes).addHandlers();
+}
+
+export function startTimer(durationMinutes) {
+    remainingTimeMinutes = durationMinutes;
+    if (timerManager) {
+        timerManager.start();
+    }
 }

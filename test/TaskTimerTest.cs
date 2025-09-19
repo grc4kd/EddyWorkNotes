@@ -14,7 +14,7 @@ public class TaskTimerTest
         Assert.False(timer.IsRunning);
         Assert.True(timer.IsWorkTime);
         // Timer initializes with zero RemainingTime before timer starts
-        Assert.Equal(0, timer.RemainingTime);
+        Assert.Equal(40, timer.RemainingTime);
     }
 
     [Fact]

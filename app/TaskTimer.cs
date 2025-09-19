@@ -56,8 +56,10 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
     /// <param name="BreakMinutes">The length of the break cycle in minutes.</param>
     public TaskTimer(int WorkMinutes, int BreakMinutes) : this(WorkMinutes, BreakMinutes, IsWorkTime: true)
     {
+        logger.LogInformation("Constructed {nameofTaskTimer} with {nameofTaskTimerWorkMinutes}: {WorkMinutes}, {nameofTaskTimerBreakMinutes}: {BreakMinutes}",
+            nameof(TaskTimer), nameof(TaskTimer.WorkMinutes), WorkMinutes, nameof(TaskTimer.BreakMinutes), BreakMinutes);
 
-        logger.LogInformation($"Constructed {nameof(TaskTimer)} with {nameof(TaskTimer.WorkMinutes)}: {WorkMinutes}, {nameof(TaskTimer.BreakMinutes)}: {BreakMinutes}");
+        RemainingTime = IsWorkTime ? WorkMinutes : BreakMinutes;
     }
 
     /// <summary>
@@ -142,7 +144,8 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
         lastEventTimeUtc = DateTimeOffset.UtcNow;
 
         string logPrefix = IsRunning ? "Resuming" : "Pausing";
-        logger.LogInformation($"{logPrefix} timer with {nameof(RemainingTime)}: {RemainingTime} seconds left. Last Event Time (UTC): [{lastEventTimeUtc}].");
+        logger.LogInformation("{logPrefix} timer with {nameofRemainingTime}: {RemainingTime} seconds left. Last Event Time (UTC): [{lastEventTimeUtc}].",
+            logPrefix, nameof(RemainingTime), RemainingTime, lastEventTimeUtc);
 
         _timer.Dispose();
         OnTimerCompleted(EventArgs.Empty);

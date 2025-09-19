@@ -12,17 +12,17 @@
         <h3 class="card-title">Pomodoro Timer</h3>
 
         <div class="mb-3">
-            <p>Remaining Time:&nbsp 
+            <p>Remaining Time:&nbsp
                 <span id='timerDisplay'>@FormatTime(_taskTimer.RemainingTime)</span>
             </p>
             <p>Current Phase: @CurrentPhase</p>
             <p>Status: @TimerStatus</p>
         </div>
 
-        <button @onclick="StartTimer" id="startTimerBtn" class="btn btn-primary me-2">
+        <button @onclick="StartTimerAsync" id="startTimerBtn" class="btn btn-primary me-2">
             Start
         </button>
-        
+
         <button @onclick="TogglePause" id="togglePauseBtn" class="btn btn-warning">
             @(_taskTimer.IsRunning ? "Pause" : "Resume")
         </button>
@@ -43,10 +43,17 @@
     {
         if (firstRender)
         {
-            module = await JS.InvokeAsync<IJSObjectReference>("import",
-            "./Components/Pages/TaskTimer.razor.js");
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
+            await AddHandlers();
+        }
+    }
 
-            await module.InvokeVoidAsync("createTimerManager", _taskTimer.WorkMinutes);
+    public async Task AddHandlers()
+    {
+        if (module is not null)
+        {
+            await module.InvokeVoidAsync("addHandlers", _taskTimer.WorkMinutes);
+            StateHasChanged();
         }
     }
 
@@ -64,7 +71,7 @@
         }
     }
 
-    private async Task StartTimer()
+    private async Task StartTimerAsync()
     {
         if (!_taskTimer.IsRunning)
         {
@@ -74,7 +81,8 @@
             // Capture the initial remaining time
             CurrentRemainingTimeSecs = _taskTimer.RemainingTime;
 
-            await _taskTimer.StartAsync();
+            // wait on server thread for task timer app code
+            await _taskTimer.StartAsync().ConfigureAwait(false);
 
             // Final update when timer completes
             CurrentRemainingTimeSecs = _taskTimer.RemainingTime;
@@ -84,7 +92,7 @@
     private void TogglePause()
     {
         _taskTimer.TogglePause();
-        TimerStatus = _taskTimer.IsRunning ?  "resumed" : "paused";
+        TimerStatus = _taskTimer.IsRunning ? "resumed" : "paused";
         CurrentPhase = _taskTimer.IsWorkTime ? $"work ({TimerStatus})" : $"break ({TimerStatus})";
     }
 
