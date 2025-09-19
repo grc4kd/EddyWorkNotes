@@ -10,7 +10,7 @@ namespace Eddy;
 /// <param name="WorkMinutes">The length of the work cycle in minutes.</param>
 /// <param name="BreakMinutes">The length of the break cycle in minutes.</param>
 /// <param name="IsWorkTime">Start with work time? Exposes additional state so method can be called starting with break time.</param>
-public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime) : IDisposable
+public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
 {
     private static ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
     private readonly ILogger logger = factory.CreateLogger("TaskTimer");
@@ -115,10 +115,5 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime) : ID
             IsWorkTime = !IsWorkTime;
             ResetTimer();
         }
-    }
-
-    public void Dispose()
-    {
-        _timer.Dispose();
     }
 }

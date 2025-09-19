@@ -268,20 +268,4 @@ public class TaskTimerTest
         Assert.Equal(TaskStatus.Canceled, task.Status);
         Assert.True(timer.IsRunning);
     }
-
-    [Fact]
-    public async Task TaskTimer_Dispose_ShowDisposeResources()
-    {
-        // Given
-        var timer = new TaskTimer(WorkMinutes: 1, BreakMinutes: 0);
-        var task = timer.StartAsync();
-
-        // When
-        timer.Dispose();
-        await task;
-
-        Assert.Equal(TaskStatus.RanToCompletion, task.Status);
-        Assert.Null(task.AsyncState);
-        Assert.Null(task.Exception);
-    }
 }
