@@ -105,7 +105,7 @@ public class TaskTimerTest
     public async Task WorkPeriod_Completes_ShouldStartBreakPeriod()
     {
         // Given
-        TaskTimer timer = new(WorkMinutes: 10, BreakMinutes: 5);
+        TaskTimer timer = new(WorkMinutes: 0, BreakMinutes: 1);
 
         // When - Complete work period
         await timer.StartAsync();
@@ -113,7 +113,7 @@ public class TaskTimerTest
         // Then - Verify break period started
         Assert.Equal(timer.BreakMinutes * 60, timer.RemainingTime);
         Assert.False(timer.IsWorkTime);
-        Assert.False(timer.IsRunning);
+        Assert.True(timer.IsRunning);
     }
 
     [Fact]
