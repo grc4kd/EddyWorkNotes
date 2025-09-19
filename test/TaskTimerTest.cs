@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Eddy;
 
 namespace test;
@@ -141,7 +140,7 @@ public class TaskTimerTest
 
         // When - Start and immediately cancel
         var task = timer.StartAsync();
-        await timer.Cancel();
+        await timer.CancelAsync();
 
         // Then
         await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
@@ -166,7 +165,7 @@ public class TaskTimerTest
         {
             // When - Start and immediately cancel
             var task = timer.StartAsync();
-            await timer.Cancel();
+            await timer.CancelAsync();
 
             // Then
             await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
@@ -196,7 +195,7 @@ public class TaskTimerTest
         {
             // When
             var task = Task.Run(timer.StartAsync);
-            await timer.Cancel();
+            await timer.CancelAsync();
             await task;
 
             // Then
@@ -210,5 +209,79 @@ public class TaskTimerTest
         {
             timer.TimerCompleted -= onTimerCompleted;
         }
+    }
+
+    [Fact]
+    public async Task StartAsync_MultipleConcurrentCancellations_ShouldHandleGracefully()
+    {
+        // Given
+        var timer = new TaskTimer(WorkMinutes: 1, BreakMinutes: 0);
+        var task = timer.StartAsync();
+
+        // When - Cancel twice concurrently
+        var cancellationTask1 = timer.CancelAsync();
+        var cancellationTask2 = timer.CancelAsync();
+        await Task.WhenAll(cancellationTask1, cancellationTask2);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+
+        // Then - Verify state remains consistent
+        Assert.Equal(TaskStatus.RanToCompletion, cancellationTask1.Status);
+        Assert.Equal(TaskStatus.RanToCompletion, cancellationTask2.Status);
+        Assert.True(task.IsCanceled);
+        Assert.True(timer.IsRunning);
+    }
+
+    [Fact]
+    public async Task StartAsync_CancelDuringBreakTime_ShouldWorkAsExpected()
+    {
+        // Given
+        var timer = new TaskTimer(WorkMinutes: 0, BreakMinutes: 1);
+        await timer.StartAsync(); // Complete work time
+
+        // When - Cancel during break
+        var task = timer.StartAsync();
+        await timer.CancelAsync();
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+
+        // Then
+        Assert.Equal(TaskStatus.Canceled, task.Status);
+        Assert.True(timer.IsRunning);
+        Assert.Equal(60, timer.RemainingTime);
+    }
+
+    [Fact]
+    public async Task StartAsync_CancelAlreadyCancelled_ShouldNotThrow()
+    {
+        // Given
+        var timer = new TaskTimer(WorkMinutes: 1, BreakMinutes: 0);
+        var task = timer.StartAsync();
+
+        // When - Cancel twice
+        await timer.CancelAsync();
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+
+        // Second cancel call should not throw exception
+        await timer.CancelAsync();
+
+        // Then
+        Assert.Equal(TaskStatus.Canceled, task.Status);
+        Assert.True(timer.IsRunning);
+    }
+
+    [Fact]
+    public async Task TaskTimer_Dispose_ShowDisposeResources()
+    {
+        // Given
+        var timer = new TaskTimer(WorkMinutes: 1, BreakMinutes: 0);
+        var task = timer.StartAsync();
+
+        // When
+        timer.Dispose();
+        await task;
+
+        Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+        Assert.Null(task.AsyncState);
+        Assert.Null(task.Exception);
     }
 }

@@ -58,7 +58,7 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime) : ID
         IsRunning = true;
     }
 
-    public async Task Cancel()
+    public async Task CancelAsync()
     {
         if (!_cts.IsCancellationRequested)
         {
