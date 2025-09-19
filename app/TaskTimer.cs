@@ -1,37 +1,36 @@
+using Microsoft.Extensions.Logging;
+
 namespace Eddy;
 
-
 /// <summary>
-/// 
+/// The TaskTimer record type encapsulates the behavior of a work/break timer.
+/// After the initial work period, a break period is started, then a new work period is started again.
+/// The timer continues like this indefinetely unless interrupted by the user or an exception.
 /// </summary>
-/// <param name="WorkDuration"></param>
-/// <param name="BreakDuration"></param>
-/// <param name="IsWorkTime"></param>
-/// <param name="RemainingTime"></param>
-public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
+/// <param name="WorkMinutes">The length of the work cycle in minutes.</param>
+/// <param name="BreakMinutes">The length of the break cycle in minutes.</param>
+/// <param name="IsWorkTime">Start with work time? Exposes additional state so method can be called starting with break time.</param>
+public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime) : IDisposable
 {
-    private readonly CancellationTokenSource _cts = new();
-    private static DateTimeOffset lastEventTimeUtc = DateTimeOffset.UtcNow;
-    private static PeriodicTimer _timer = new(TimeSpan.FromMilliseconds(1));
+    private static ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
+    private readonly ILogger logger = factory.CreateLogger("TaskTimer");
 
-    public int WorkDuration { get; } = WorkDuration;
-    public int BreakDuration { get; } = BreakDuration;
+    private readonly CancellationTokenSource _cts = new();
+    private DateTimeOffset lastEventTimeUtc = DateTimeOffset.UtcNow;
+    private PeriodicTimer _timer = new(TimeSpan.FromMilliseconds(1));
+
+    public int WorkMinutes { get; } = WorkMinutes;
+    public int BreakMinutes { get; } = BreakMinutes;
     public bool IsRunning { get; set; } = false;
     public bool IsWorkTime { get; set; } = IsWorkTime;
     public double RemainingTime { get; set; }
 
-    public event EventHandler? TimeElapsed;
     public event EventHandler? TimerCompleted;
 
-
-    /// <param name="IsWorkTime"></param>
-    public TaskTimer(bool IsWorkTime, int WorkDuration, int BreakDuration) : this(WorkDuration, BreakDuration, IsWorkTime)
+    public TaskTimer(int WorkMinutes, int BreakMinutes) : this(WorkMinutes, BreakMinutes, IsWorkTime: true)
     {
-
-    }
-    public TaskTimer(int WorkDuration, int BreakDuration) : this(IsWorkTime: true, WorkDuration, BreakDuration)
-    {
-
+        
+        logger.LogInformation($"Constructed {nameof(TaskTimer)} with {nameof(TaskTimer.WorkMinutes)}: {WorkMinutes}, {nameof(TaskTimer.BreakMinutes)}: {BreakMinutes}");
     }
 
     private void ResetTimer()
@@ -40,33 +39,33 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
 
         if (IsWorkTime)
         {
-            TimeSpan initialTimeSpan = WorkDuration > 0 ?
-                TimeSpan.FromSeconds(WorkDuration) :
+            TimeSpan initialTimeSpan = WorkMinutes > 0 ?
+                TimeSpan.FromMinutes(WorkMinutes) :
                 TimeSpan.FromMilliseconds(1);
 
             _timer = new(initialTimeSpan);
         }
         else
         {
-            TimeSpan initialTimeSpan = BreakDuration > 0 ?
-                TimeSpan.FromSeconds(BreakDuration) :
+            TimeSpan initialTimeSpan = BreakMinutes > 0 ?
+                TimeSpan.FromMinutes(BreakMinutes) :
                 TimeSpan.FromMilliseconds(1);
 
             _timer = new(initialTimeSpan);
         }
 
         RemainingTime = _timer.Period.TotalSeconds;
+        IsRunning = true;
     }
 
-    public void Cancel()
+    public async Task Cancel()
     {
-        _cts.Cancel();
+        if (!_cts.IsCancellationRequested)
+        {
+            await _cts.CancelAsync();
+        }
+
         OnTimerCompleted(EventArgs.Empty);
-    }
-
-    public virtual void OnTimeElapsed(EventArgs e)
-    {
-        TimeElapsed?.Invoke(this, e);
     }
 
     public virtual void OnTimerCompleted(EventArgs e)
@@ -87,39 +86,39 @@ public record TaskTimer(int WorkDuration, int BreakDuration, bool IsWorkTime)
 
     public void TogglePause()
     {
-        double elapsedTime = DateTimeOffset.UtcNow.Subtract(lastEventTimeUtc).TotalSeconds;
-        RemainingTime -= elapsedTime;
+        if (IsRunning)
+        {
+            double elapsedTime = DateTimeOffset.UtcNow.Subtract(lastEventTimeUtc).TotalSeconds;
+            RemainingTime -= elapsedTime;
+        }
 
         IsRunning = !IsRunning;
         lastEventTimeUtc = DateTimeOffset.UtcNow;
+
+        string logPrefix = IsRunning ? "Resuming" : "Pausing";
+        logger.LogInformation($"{logPrefix} timer with {nameof(RemainingTime)}: {RemainingTime} seconds left. Last Event Time (UTC): [{lastEventTimeUtc}].");
         
-        Cancel();
+        _timer.Dispose();
+        OnTimerCompleted(EventArgs.Empty);
     }
 
     private async Task UpdateTimeAsync(CancellationToken cancellationToken)
     {
         if (!cancellationToken.IsCancellationRequested)
         {
-            // Stop and complete the timer after break is over
-            IsRunning = IsWorkTime;
-        }
-
-        try
-        {
             await _timer.WaitForNextTickAsync(cancellationToken);
         }
-        catch (OperationCanceledException)
-        {
-            TimerCompleted?.Invoke(this, EventArgs.Empty);
-        }
 
-        if (!cancellationToken.IsCancellationRequested)
+        if (IsRunning)
         {
-            // Switch to break time, then rescet timer
+            // Switch to break time, then reset timer
             IsWorkTime = !IsWorkTime;
-            // Raise the time elapsed event to subscribers
-            OnTimeElapsed(EventArgs.Empty);
             ResetTimer();
         }
+    }
+
+    public void Dispose()
+    {
+        _timer.Dispose();
     }
 }

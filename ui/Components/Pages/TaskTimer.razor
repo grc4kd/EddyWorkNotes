@@ -15,7 +15,7 @@
             <p>Remaining Time:&nbsp 
                 <span id='timerDisplay'>@FormatTime(_taskTimer.RemainingTime)</span>
             </p>
-            <p>Current Phase: @(_taskTimer.IsWorkTime ? "Work" : "Break")</p>
+            <p>Current Phase: @CurrentPhase</p>
             <p>Status: @TimerStatus</p>
         </div>
 
@@ -30,9 +30,13 @@
 </div>
 
 @code {
-    private Eddy.TaskTimer _taskTimer = new Eddy.TaskTimer(25, 5);
+    private const int DefaultWorkMinutes = 25;
+    private const int DefaultBreakMinutes = 5;
+
+    private Eddy.TaskTimer _taskTimer = new Eddy.TaskTimer(DefaultWorkMinutes, DefaultBreakMinutes);
+    private static double CurrentRemainingTimeSecs { get; set; } = DefaultWorkMinutes * 60;
     private string TimerStatus { get; set; } = "Idle";
-    private double CurrentRemainingTime { get; set; } = 25;
+    private string CurrentPhase { get; set; } = string.Empty;
     private IJSObjectReference? module;
 
     protected async override Task OnAfterRenderAsync(bool firstRender)
@@ -42,9 +46,7 @@
             module = await JS.InvokeAsync<IJSObjectReference>("import",
             "./Components/Pages/TaskTimer.razor.js");
 
-            bool isWorkTime = _taskTimer.IsWorkTime;
-            int[] timeArgs = [_taskTimer.WorkDuration, _taskTimer.BreakDuration];
-            await module.InvokeVoidAsync("addHandlers", isWorkTime, timeArgs);
+            await module.InvokeVoidAsync("createTimerManager", _taskTimer.WorkMinutes);
         }
     }
 
@@ -66,24 +68,24 @@
     {
         if (!_taskTimer.IsRunning)
         {
-            TimerStatus = $"Started {(_taskTimer.IsWorkTime ? "work" : "break")} timer";
-            StateHasChanged();
+            CurrentPhase = _taskTimer.IsWorkTime ? "work" : "break";
+            TimerStatus = $"Started {CurrentPhase} timer.";
 
             // Capture the initial remaining time
-            CurrentRemainingTime = _taskTimer.RemainingTime;
+            CurrentRemainingTimeSecs = _taskTimer.RemainingTime;
 
-            await _taskTimer.StartAsync().ConfigureAwait(false);
+            await _taskTimer.StartAsync();
 
             // Final update when timer completes
-            CurrentRemainingTime = _taskTimer.RemainingTime;
+            CurrentRemainingTimeSecs = _taskTimer.RemainingTime;
         }
     }
 
     private void TogglePause()
     {
         _taskTimer.TogglePause();
-        TimerStatus = _taskTimer.IsRunning ? "Paused" : "Resumed";
-        StateHasChanged();
+        TimerStatus = _taskTimer.IsRunning ?  "resumed" : "paused";
+        CurrentPhase = _taskTimer.IsWorkTime ? $"work ({TimerStatus})" : $"break ({TimerStatus})";
     }
 
     private string FormatTime(double seconds)
