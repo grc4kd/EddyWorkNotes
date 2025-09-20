@@ -112,7 +112,7 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
         RemainingSeconds = _timer.Period.TotalSeconds;
         IsRunning = true;
 
-        logger.LogInformation("Starting timer for {TimerPeriod} seconds at {LastEventTimeUtc}.", _timer.Period, lastEventTimeUtc);
+        logger.LogInformation("Starting timer for {TimerPeriod} at {LastEventTimeUtc}.", _timer.Period, lastEventTimeUtc);
 
         // If cancellation was requested, skip clock time updates
         if (!_cts.IsCancellationRequested)

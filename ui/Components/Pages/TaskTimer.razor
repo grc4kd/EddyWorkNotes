@@ -26,8 +26,8 @@
 </div>
 
 @code {
-    private const int DefaultWorkMinutes = 1;
-    private const int DefaultBreakMinutes = 1;
+    private const int DefaultWorkMinutes = 25;
+    private const int DefaultBreakMinutes = 5;
 
     private Eddy.TaskTimer _taskTimer = new Eddy.TaskTimer(DefaultWorkMinutes, DefaultBreakMinutes);
     public string TimerStatus { get; protected set; } = "Idle";
@@ -90,7 +90,9 @@
             // update page state
             CurrentPhase = _taskTimer.IsWorkTime ? "Work" : "Break";
             TimerStatus = $"Started {CurrentPhase} timer.";
+            var task = _taskTimer.StartAsync();
             await InvokeAsync(StateHasChanged);
+            await task;
         }
 
         // Only start timer if not currently running / stopped
@@ -98,7 +100,7 @@
         if (!_taskTimer.IsRunning && _taskTimer.IsWorkTime)
         {
             await createTimerAsync(60 * _taskTimer.WorkMinutes);
-            await _taskTimer.StartAsync();
+
             _taskTimer.IsWorkTime = false;
         }
 
@@ -106,7 +108,8 @@
         if (_taskTimer.IsRunning && !_taskTimer.IsWorkTime)
         {
             await createTimerAsync(60 * _taskTimer.BreakMinutes);
-            await _taskTimer.StartAsync();
+
+            _taskTimer.IsWorkTime = true;
         }
     }
 
