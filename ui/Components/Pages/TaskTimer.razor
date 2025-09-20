@@ -14,19 +14,14 @@
 
         <div class="mb-3">
             <p>Remaining Time:&nbsp
-                <span id='timerDisplay'>@FormatTime(_taskTimer.RemainingTime)</span>
+                <span id='timerDisplay'>@FormatTime(_taskTimer.RemainingSeconds)</span>
             </p>
             <p>Current Phase: @CurrentPhase</p>
             <p>Status: @TimerStatus</p>
         </div>
 
-        <button @onclick="TimerLoop" id="startTimerBtn" class="btn btn-primary me-2">
-            Start
-        </button>
-
-        <button @onclick="TogglePause" id="togglePauseBtn" class="btn btn-warning">
-            @(_taskTimer.IsRunning ? "Pause" : "Resume")
-        </button>
+        <button @onclick="StartTimerAsync" class="btn btn-primary me-2">Start</button>
+        <button @onclick="TogglePauseAsync" class="btn btn-warning">@(_taskTimer.IsRunning ? "Pause" : "Resume")</button>
     </div>
 </div>
 
@@ -35,7 +30,6 @@
     private const int DefaultBreakMinutes = 5;
 
     private Eddy.TaskTimer _taskTimer = new Eddy.TaskTimer(DefaultWorkMinutes, DefaultBreakMinutes);
-    private static double CurrentRemainingTimeSecs { get; set; } = DefaultWorkMinutes * 60;
     private string TimerStatus { get; set; } = "Idle";
     private string CurrentPhase { get; set; } = string.Empty;
     private IJSObjectReference? module;
@@ -45,17 +39,21 @@
         if (firstRender)
         {
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
-            await AddHandlers();
+            await module.InvokeVoidAsync("init", _taskTimer.WorkMinutes);
         }
     }
 
-    public async Task AddHandlers()
+    public async Task TogglePauseAsync()
     {
-        if (module is not null)
+        if (module != null && _taskTimer.IsRunning)
         {
-            await module.InvokeVoidAsync("addHandlers", _taskTimer.WorkMinutes);
-            StateHasChanged();
+            await module.InvokeVoidAsync("pause");
         }
+
+        TimerStatus = _taskTimer.IsRunning ? "Resumed" : "Paused";
+        CurrentPhase = _taskTimer.IsWorkTime ? $"work ({TimerStatus})" : $"break ({TimerStatus})";
+
+        _taskTimer.TogglePause();
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
@@ -72,51 +70,30 @@
         }
     }
 
-    private async Task StartTimerLoop(CancellationToken cancellationToken) {
-        void onTimerCompleted(object? sender, EventArgs eventArgs) {
-            CurrentRemainingTimeSecs = _taskTimer.RemainingTime;
-            TimerStatus = "Complete";
-            InvokeAsync(StateHasChanged).ConfigureAwait(false);
-        }
-        _taskTimer.TimerCompleted += onTimerCompleted;
-
-        if (cancellationToken.IsCancellationRequested) {
-            await _taskTimer.CancelAsync();
-        }
-
-        // run until cancellation requested
-        while (!cancellationToken.IsCancellationRequested) {
-            try {
-                await TimerLoop();
-            } catch (OperationCanceledException) {
-                CurrentRemainingTimeSecs = _taskTimer.RemainingTime;
-            }
-        }
-    }
-
-    private async Task TimerLoop()
+    public async Task StartTimerAsync()
     {
         // only start timer if not currently running / stopped
         if (!_taskTimer.IsRunning)
         {
-            CurrentRemainingTimeSecs = _taskTimer.RemainingTime;
-            await _taskTimer.StartAsync().ConfigureAwait(false);
+            // start JavaScript timer first
+            if (module != null)
+            {
+                await module.InvokeVoidAsync("start");
+            }
 
-            // current remaining time may be greater than 0 when timer is cancelled or paused
-            CurrentRemainingTimeSecs = _taskTimer.RemainingTime;
+            // update page state
+            CurrentPhase = _taskTimer.IsWorkTime ? "Work" : "Break";
+            TimerStatus = $"Started {CurrentPhase} timer.";
+            var task = _taskTimer.StartAsync();
+            
+            // update page state, then wait for periodic timer
+            StateHasChanged();            
+            await task;
         }
 
-        // update
+        // update page state after timer is over or when timer not running
         CurrentPhase = _taskTimer.IsWorkTime ? "Work" : "Break";
         TimerStatus = $"Started {CurrentPhase} timer.";
-        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
-    }
-
-    private void TogglePause()
-    {
-        _taskTimer.TogglePause();
-        TimerStatus = _taskTimer.IsRunning ? "Resumed" : "Paused";
-        CurrentPhase = _taskTimer.IsWorkTime ? $"work ({TimerStatus})" : $"break ({TimerStatus})";
     }
 
     private string FormatTime(double seconds)

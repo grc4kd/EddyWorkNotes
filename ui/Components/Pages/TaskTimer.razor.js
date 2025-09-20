@@ -57,26 +57,22 @@ class TimerManager {
         this.#isRunning = false;
     }
 
-    resume() {
-        this.#intervalId = setInterval(() => this.tick(), TimerManager.#INTERVAL_DELAY_MS);
-        this.#isRunning = true;
-    }
-
     togglePause() {
         if (this.#isRunning) {
             this.pause();
         } else {
-            this.resume();
+            this.start();
         }
-    }
-
-    addHandlers() {
-        document.getElementById('startTimerBtn')?.addEventListener('click', () => this.start());
-        document.getElementById('togglePauseBtn')?.addEventListener('click', () => this.togglePause());
     }
 }
 
 let timerManager;
-export function addHandlers(durationMinutes) {
-    timerManager = new TimerManager(durationMinutes).addHandlers();
+export function init(duration) {
+    timerManager = new TimerManager(duration);
+}
+export function start() {
+    timerManager.start();
+}
+export function pause() {
+    timerManager.pause();
 }

@@ -12,7 +12,7 @@ namespace Eddy;
 /// <param name="IsWorkTime">Start with work time? Exposes additional state so method can be called starting with break time.</param>
 public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
 {
-    private static ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
+    private static readonly ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
     private readonly ILogger logger = factory.CreateLogger("TaskTimer");
 
     private readonly CancellationTokenSource _cts = new();
@@ -42,7 +42,7 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
     /// <summary>
     /// Gets or sets the remaining time in seconds for the current period.
     /// </summary>
-    public double RemainingTime { get; set; }
+    public double RemainingSeconds { get; set; }
 
     /// <summary>
     /// Event raised when the timer completes or is cancelled.
@@ -56,10 +56,7 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
     /// <param name="BreakMinutes">The length of the break cycle in minutes.</param>
     public TaskTimer(int WorkMinutes, int BreakMinutes) : this(WorkMinutes, BreakMinutes, IsWorkTime: true)
     {
-        logger.LogInformation("Constructed {nameofTaskTimer} with {nameofTaskTimerWorkMinutes}: {WorkMinutes}, {nameofTaskTimerBreakMinutes}: {BreakMinutes}",
-            nameof(TaskTimer), nameof(TaskTimer.WorkMinutes), WorkMinutes, nameof(TaskTimer.BreakMinutes), BreakMinutes);
-
-        RemainingTime = IsWorkTime ? WorkMinutes : BreakMinutes;
+        RemainingSeconds = IsWorkTime ? WorkMinutes * 60 : BreakMinutes * 60;
     }
 
     /// <summary>
@@ -68,7 +65,7 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
     private void ResetTimer()
     {
         lastEventTimeUtc = DateTimeOffset.UtcNow;
-
+        logger.LogInformation("Starting timer with {RemainingTime} work minutes at {lastEvenTimeUtc}.", RemainingSeconds, lastEventTimeUtc);
         if (IsWorkTime)
         {
             TimeSpan initialTimeSpan = WorkMinutes > 0 ?
@@ -86,7 +83,7 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
             _timer = new(initialTimeSpan);
         }
 
-        RemainingTime = _timer.Period.TotalSeconds;
+        RemainingSeconds = _timer.Period.TotalSeconds;
         IsRunning = true;
     }
 
@@ -137,15 +134,14 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
         if (IsRunning)
         {
             double elapsedTime = DateTimeOffset.UtcNow.Subtract(lastEventTimeUtc).TotalSeconds;
-            RemainingTime -= elapsedTime;
+            RemainingSeconds -= elapsedTime;
         }
 
         IsRunning = !IsRunning;
         lastEventTimeUtc = DateTimeOffset.UtcNow;
 
-        string logPrefix = IsRunning ? "Resuming" : "Pausing";
-        logger.LogInformation("{logPrefix} timer with {nameofRemainingTime}: {RemainingTime} seconds left. Last Event Time (UTC): [{lastEventTimeUtc}].",
-            logPrefix, nameof(RemainingTime), RemainingTime, lastEventTimeUtc);
+        logger.LogInformation("{logPrefix} timer with {RemainingSeconds} seconds left. Last Event Time (UTC): [{lastEventTimeUtc}].",
+            IsRunning ? "Resuming" : "Pausing", RemainingSeconds, lastEventTimeUtc);
 
         _timer.Dispose();
         OnTimerCompleted(EventArgs.Empty);
