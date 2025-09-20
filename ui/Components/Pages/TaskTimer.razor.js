@@ -1,13 +1,15 @@
 class TimerManager {
-    static #INTERVAL_DELAY = 1000;
+    static #INTERVAL_DELAY_SEC = 1
+    static #INTERVAL_DELAY_MS  = 1000 * this.#INTERVAL_DELAY_SEC;
 
-    #durationMinutes;
-    #remainingTimeMinutes;
+    #initialDuration;
+    #remainingTimeSeconds;
+    #intervalId;
     #isRunning;
 
     constructor(durationMinutes) {
-        this.#durationMinutes = durationMinutes;
-        this.#remainingTimeMinutes = durationMinutes * 60;
+        this.#initialDuration = durationMinutes * 60; // Store as seconds
+        this.#remainingTimeSeconds = this.#initialDuration;
         this.#isRunning = false;
     }
 
@@ -22,41 +24,41 @@ class TimerManager {
     updateDisplay() {
         const display = document.getElementById('timerDisplay');
         if (display) {
-            display.textContent = `${this.formatTime(this.#remainingTimeMinutes)} remaining`;
+            display.textContent = `${this.formatTime(this.#remainingTimeSeconds)} remaining`;
         }
     }
 
     reset() {
-        clearInterval(this.#durationMinutes);
-        this.#remainingTimeMinutes = 0;
+        clearInterval(this.#intervalId);
+        this.#remainingTimeSeconds = 0;
         this.updateDisplay();
     }
 
     tick() {
-        if (this.#remainingTimeMinutes <= 1) {
+        // reset the clock once remaining time is below delay threshold (skip last update)
+        if (this.#remainingTimeSeconds - TimerManager.#INTERVAL_DELAY_SEC <= 0) {
             this.reset();
-            return;
         }
 
-        this.#remainingTimeMinutes--;
+        // always count tick and update timer display
+        this.#remainingTimeSeconds -= TimerManager.#INTERVAL_DELAY_SEC;
         this.updateDisplay();
-        this.setInterval(TimerManager.#INTERVAL_DELAY);
     }
 
     start() {
-        if (this.#remainingTimeMinutes > 0) {
-            this.#durationMinutes = setInterval(() => this.tick(), TimerManager.#INTERVAL_DELAY);
+        if (!this.#isRunning && this.#remainingTimeSeconds > 0) {
+            this.#intervalId = setInterval(() => this.tick(), TimerManager.#INTERVAL_DELAY_MS);
             this.#isRunning = true;
         }
     }
 
     pause() {
-        clearInterval(this.#durationMinutes);
+        clearInterval(this.#intervalId);
         this.#isRunning = false;
     }
 
     resume() {
-        this.#durationMinutes = setInterval(() => this.tick(), TimerManager.#INTERVAL_DELAY);
+        this.#intervalId = setInterval(() => this.tick(), TimerManager.#INTERVAL_DELAY_MS);
         this.#isRunning = true;
     }
 
@@ -77,11 +79,4 @@ class TimerManager {
 let timerManager;
 export function addHandlers(durationMinutes) {
     timerManager = new TimerManager(durationMinutes).addHandlers();
-}
-
-export function startTimer(durationMinutes) {
-    remainingTimeMinutes = durationMinutes;
-    if (timerManager) {
-        timerManager.start();
-    }
 }
