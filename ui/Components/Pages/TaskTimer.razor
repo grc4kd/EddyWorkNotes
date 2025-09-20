@@ -13,7 +13,7 @@
         <h3 class="card-title">Pomodoro Timer</h3>
 
         <div class="mb-3">
-            <p>Remaining Time:&nbsp
+            <p>Time:&nbsp
                 <span id='timerDisplay'>@FormatTime(_taskTimer.RemainingSeconds)</span>
             </p>
             <p>Current Phase: @CurrentPhase</p>
@@ -21,25 +21,36 @@
         </div>
 
         <button @onclick="StartTimerAsync" class="btn btn-primary me-2">Start</button>
-        <button @onclick="TogglePauseAsync" class="btn btn-warning">@(_taskTimer.IsRunning ? "Pause" : "Resume")</button>
+        <button @onclick="TogglePauseAsync" class="btn btn-warning">@TogglePauseText</button>
     </div>
 </div>
 
 @code {
-    private const int DefaultWorkMinutes = 25;
-    private const int DefaultBreakMinutes = 5;
+    private const int DefaultWorkMinutes = 1;
+    private const int DefaultBreakMinutes = 1;
 
     private Eddy.TaskTimer _taskTimer = new Eddy.TaskTimer(DefaultWorkMinutes, DefaultBreakMinutes);
-    private string TimerStatus { get; set; } = "Idle";
+    public string TimerStatus { get; protected set; } = "Idle";
     private string CurrentPhase { get; set; } = string.Empty;
+    private string TogglePauseText { get { return _taskTimer.IsRunning ? "Pause" : "Resume"; } }
     private IJSObjectReference? module;
+
+    protected override Task OnInitializedAsync()
+    {
+        void onTimerStopped(object? sender, EventArgs eventArgs) { 
+            TimerStatus = $"{CurrentPhase} timer stopped.";
+            InvokeAsync(StateHasChanged);
+        }
+        _taskTimer.TimerCompleted += onTimerStopped;
+        return Task.CompletedTask;
+    }
 
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
-            await module.InvokeVoidAsync("init", _taskTimer.WorkMinutes);
+            await module.InvokeVoidAsync("init");
         }
     }
 
@@ -48,12 +59,8 @@
         if (module != null && _taskTimer.IsRunning)
         {
             await module.InvokeVoidAsync("pause");
+            _taskTimer.TogglePause();
         }
-
-        TimerStatus = _taskTimer.IsRunning ? "Resumed" : "Paused";
-        CurrentPhase = _taskTimer.IsWorkTime ? $"work ({TimerStatus})" : $"break ({TimerStatus})";
-
-        _taskTimer.TogglePause();
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
@@ -72,35 +79,50 @@
 
     public async Task StartTimerAsync()
     {
-        // only start timer if not currently running / stopped
-        if (!_taskTimer.IsRunning)
+        async Task createTimerAsync(int durationSeconds)
         {
-            // start JavaScript timer first
+            // start client-side timer first
             if (module != null)
             {
-                await module.InvokeVoidAsync("start");
+                await module.InvokeVoidAsync("run", durationSeconds);
             }
 
             // update page state
             CurrentPhase = _taskTimer.IsWorkTime ? "Work" : "Break";
             TimerStatus = $"Started {CurrentPhase} timer.";
-            var task = _taskTimer.StartAsync();
-            
-            // update page state, then wait for periodic timer
-            StateHasChanged();            
-            await task;
+            await InvokeAsync(StateHasChanged);
         }
 
-        // update page state after timer is over or when timer not running
-        CurrentPhase = _taskTimer.IsWorkTime ? "Work" : "Break";
-        TimerStatus = $"Started {CurrentPhase} timer.";
+        // Only start timer if not currently running / stopped
+        // Run work timer first (if starting with work)
+        if (!_taskTimer.IsRunning && _taskTimer.IsWorkTime)
+        {
+            await createTimerAsync(60 * _taskTimer.WorkMinutes);
+            await _taskTimer.StartAsync();
+            _taskTimer.IsWorkTime = false;
+        }
+
+        // Then, run break timer. Then stop timer.
+        if (_taskTimer.IsRunning && !_taskTimer.IsWorkTime)
+        {
+            await createTimerAsync(60 * _taskTimer.BreakMinutes);
+            await _taskTimer.StartAsync();
+        }
     }
 
-    private string FormatTime(double seconds)
+    private string FormatTime(double? seconds)
     {
-        int minutes = (int)(seconds / 60);
-        int remainingSeconds = (int)seconds % 60;
+        string format = "";
 
-        return $"{minutes:D2}:{remainingSeconds:D2}";
+        // set time to zero on null inputs
+        seconds ??= 0;
+
+        if (seconds > 0) {
+            int minutes = (int)(seconds / 60);
+            int remainingSeconds = (int)seconds % 60;
+            format = $"{minutes:D2}:{remainingSeconds:D2}";
+        }
+
+        return format;
     }
 }

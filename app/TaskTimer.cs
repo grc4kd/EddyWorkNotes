@@ -17,7 +17,7 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
 
     private readonly CancellationTokenSource _cts = new();
     private DateTimeOffset lastEventTimeUtc = DateTimeOffset.UtcNow;
-    private PeriodicTimer _timer = new(TimeSpan.FromMilliseconds(1));
+    private PeriodicTimer? _timer;
 
     /// <summary>
     /// Gets the length of the work cycle in minutes.
@@ -42,7 +42,7 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
     /// <summary>
     /// Gets or sets the remaining time in seconds for the current period.
     /// </summary>
-    public double RemainingSeconds { get; set; }
+    public double? RemainingSeconds { get; set; }
 
     /// <summary>
     /// Event raised when the timer completes or is cancelled.
@@ -60,34 +60,6 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
     }
 
     /// <summary>
-    /// Resets the timer to its initial state based on current work/break period.
-    /// </summary>
-    private void ResetTimer()
-    {
-        lastEventTimeUtc = DateTimeOffset.UtcNow;
-        logger.LogInformation("Starting timer with {RemainingTime} work minutes at {lastEvenTimeUtc}.", RemainingSeconds, lastEventTimeUtc);
-        if (IsWorkTime)
-        {
-            TimeSpan initialTimeSpan = WorkMinutes > 0 ?
-                TimeSpan.FromMinutes(WorkMinutes) :
-                TimeSpan.FromMilliseconds(1);
-
-            _timer = new(initialTimeSpan);
-        }
-        else
-        {
-            TimeSpan initialTimeSpan = BreakMinutes > 0 ?
-                TimeSpan.FromMinutes(BreakMinutes) :
-                TimeSpan.FromMilliseconds(1);
-
-            _timer = new(initialTimeSpan);
-        }
-
-        RemainingSeconds = _timer.Period.TotalSeconds;
-        IsRunning = true;
-    }
-
-    /// <summary>
     /// Cancels the current timer operation and raises the TimerCompleted event.
     /// </summary>
     /// <returns>A task that represents the asynchronous cancellation.</returns>
@@ -98,6 +70,7 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
             await _cts.CancelAsync();
         }
 
+        _timer?.Dispose();
         OnTimerCompleted(EventArgs.Empty);
     }
 
@@ -117,12 +90,36 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
     /// </summary>
     public async Task StartAsync()
     {
-        ResetTimer();
+        lastEventTimeUtc = DateTimeOffset.UtcNow;
+
+        int setTimeMinutes = 0;
+
+        switch (IsWorkTime)
+        {
+            case true:
+                ArgumentOutOfRangeException.ThrowIfNegativeOrZero(WorkMinutes);
+
+                setTimeMinutes = WorkMinutes;
+                break;
+            case false:
+                ArgumentOutOfRangeException.ThrowIfNegativeOrZero(BreakMinutes);
+
+                setTimeMinutes = BreakMinutes;
+                break;
+        }
+
+        _timer = new(TimeSpan.FromMinutes(setTimeMinutes));
+        RemainingSeconds = _timer.Period.TotalSeconds;
+        IsRunning = true;
+
+        logger.LogInformation("Starting timer for {TimerPeriod} seconds at {LastEventTimeUtc}.", _timer.Period, lastEventTimeUtc);
 
         // If cancellation was requested, skip clock time updates
         if (!_cts.IsCancellationRequested)
         {
-            await UpdateTimeAsync(_cts.Token);
+            await _timer.WaitForNextTickAsync(_cts.Token);
+            
+            OnTimerCompleted(EventArgs.Empty);
         }
     }
 
@@ -131,10 +128,12 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
     /// </summary>
     public void TogglePause()
     {
-        if (IsRunning)
+        if (IsRunning && RemainingSeconds > 0)
         {
             double elapsedTime = DateTimeOffset.UtcNow.Subtract(lastEventTimeUtc).TotalSeconds;
-            RemainingSeconds -= elapsedTime;
+
+            // for differences less than a second, clamp the result to 0 seconds remaining
+            RemainingSeconds = elapsedTime >= 1 ? RemainingSeconds - elapsedTime : 0;
         }
 
         IsRunning = !IsRunning;
@@ -142,28 +141,5 @@ public record TaskTimer(int WorkMinutes, int BreakMinutes, bool IsWorkTime)
 
         logger.LogInformation("{logPrefix} timer with {RemainingSeconds} seconds left. Last Event Time (UTC): [{lastEventTimeUtc}].",
             IsRunning ? "Resuming" : "Pausing", RemainingSeconds, lastEventTimeUtc);
-
-        _timer.Dispose();
-        OnTimerCompleted(EventArgs.Empty);
-    }
-
-    /// <summary>
-    /// Updates the timer's remaining time until cancellation or completion.
-    /// </summary>
-    /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-    /// <returns>A task that represents the asynchronous update operation.</returns>
-    private async Task UpdateTimeAsync(CancellationToken cancellationToken)
-    {
-        if (!cancellationToken.IsCancellationRequested)
-        {
-            await _timer.WaitForNextTickAsync(cancellationToken);
-        }
-
-        if (IsRunning)
-        {
-            // Switch to break time, then reset timer
-            IsWorkTime = !IsWorkTime;
-            ResetTimer();
-        }
     }
 }

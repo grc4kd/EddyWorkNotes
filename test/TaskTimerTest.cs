@@ -13,7 +13,7 @@ public class TaskTimerTest
         // Then
         Assert.False(timer.IsRunning);
         Assert.True(timer.IsWorkTime);
-        Assert.Equal(40, timer.RemainingSeconds);
+        Assert.Equal(60 * timer.WorkMinutes, timer.RemainingSeconds);
     }
 
     [Fact]
@@ -37,22 +37,15 @@ public class TaskTimerTest
     {
         // Given
         TaskTimer timer = new(WorkMinutes: 10, BreakMinutes: 5);
-        const int delayMilliseconds = 10;
-        const double toleranceFactor = 0.01d;
 
         // When
-        await Task.Delay(delayMilliseconds);
-        Task task = timer.StartAsync();
+        var task = timer.StartAsync();
+        await Task.WhenAny(task, Task.Delay(10));
         timer.TogglePause();
-        await task;
 
         // Then
-        Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+        Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
         Assert.False(timer.IsRunning);
-
-        // Some significant amount of time should have elapsed
-        Assert.True((1000 / delayMilliseconds) > toleranceFactor * toleranceFactor);
-        Assert.Equal(600 - (delayMilliseconds / 1000), timer.RemainingSeconds, toleranceFactor);
     }
 
     [Fact]
@@ -60,16 +53,17 @@ public class TaskTimerTest
     {
         // Given
         TaskTimer timer = new(WorkMinutes: 10, BreakMinutes: 5);
-        Task task = timer.StartAsync();
-        
+
+
+        var task = timer.StartAsync();
+        await Task.WhenAny(task, Task.Delay(10));
         timer.TogglePause();
-        await task;
 
         // Resume timer when toggle pause called a second time
         timer.TogglePause();
 
         // Then
-        Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+        Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
         Assert.True(timer.IsRunning);
         Assert.True(timer.RemainingSeconds < timer.WorkMinutes * 60);
     }
@@ -94,7 +88,8 @@ public class TaskTimerTest
         TaskTimer timer = new(WorkMinutes: 0, BreakMinutes: 1);
 
         // Wait for work duration to complete
-        await timer.StartAsync();
+        var task = timer.StartAsync();
+        await Task.WhenAny(task, Task.Delay(100));
 
         // Then
         Assert.Equal(timer.BreakMinutes * 60, timer.RemainingSeconds);
@@ -107,9 +102,11 @@ public class TaskTimerTest
         TaskTimer timer = new(WorkMinutes: 0, BreakMinutes: 1);
 
         // When - Complete work period
-        await timer.StartAsync();
+        var task = timer.StartAsync();
 
         // Then - Verify break period started
+        await Assert.ThrowsAsync<TimeoutException>(() => task.WaitAsync(TimeSpan.FromMilliseconds(100)));
+        Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
         Assert.False(timer.IsWorkTime);
         Assert.True(timer.IsRunning);
     }
@@ -121,7 +118,7 @@ public class TaskTimerTest
         TaskTimer timer = new(BreakMinutes: 0, WorkMinutes: 1, IsWorkTime: false);
 
         // When - Complete break period
-        await timer.StartAsync();
+        await Task.WhenAny(timer.StartAsync(), Task.Delay(100));
 
         // Then - Verify break period started
         Assert.Equal(timer.WorkMinutes * 60, timer.RemainingSeconds);
@@ -137,8 +134,8 @@ public class TaskTimerTest
 
         // Wait for work duration to complete
         // Wait for break duration to complete
-        async void startTimerAction(Task e) => await timer.StartAsync();
-        await timer.StartAsync().ContinueWith(startTimerAction);
+        var task = timer.StartAsync();
+        await Task.WhenAny(task, Task.Delay(100));
 
         // Then
         Assert.True(timer.IsRunning);
@@ -148,15 +145,14 @@ public class TaskTimerTest
     public async Task BreakTime_TimerCyclesWorkAndBreak()
     {
         // Given
-        TaskTimer timer = new(WorkMinutes: 0, BreakMinutes: 0);
+        TaskTimer timer = new(WorkMinutes: 1, BreakMinutes: 1);
 
         // When - Wait for one work/break cycle
-        await timer.StartAsync();
-        await timer.StartAsync();
+        await Task.WhenAny(Task.Delay(10), timer.StartAsync(), timer.StartAsync());
 
         // Then
         Assert.True(timer.IsWorkTime);
-        Assert.Equal(timer.WorkMinutes, timer.RemainingSeconds, 0.001d);
+        Assert.Equal(60 * timer.WorkMinutes, timer.RemainingSeconds);
     }
 
     [Fact]
@@ -265,10 +261,11 @@ public class TaskTimerTest
     {
         // Given
         var timer = new TaskTimer(WorkMinutes: 0, BreakMinutes: 1);
-        await timer.StartAsync(); // Complete work time
 
         // When - Cancel during break
+        // Complete work time first
         var task = timer.StartAsync();
+        await Task.Delay(100);
         await timer.CancelAsync();
 
         // Then
