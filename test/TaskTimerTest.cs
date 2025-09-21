@@ -1,6 +1,31 @@
 using Eddy;
+using Microsoft.Extensions.Logging;
 
 namespace test;
+
+public class TestPeriodicTimer : IPeriodicTimer
+{
+    public TimeSpan Period { get; }
+    public bool IsRunning => false;
+    
+    public TestPeriodicTimer(TimeSpan period)
+    {
+        Period = period;
+    }
+
+    public async ValueTask<ChangeResult> WaitForNextTickAsync(CancellationToken cancellationToken = default)
+    {
+        // Immediately complete the timer for testing purposes
+        return new ChangeResult(false, Period);
+    }
+}
+
+public interface IPeriodicTimer
+{
+    TimeSpan Period { get; }
+    bool IsRunning { get; }
+    ValueTask<ChangeResult> WaitForNextTickAsync(CancellationToken cancellationToken = default);
+}
 
 public class TaskTimerTest
 {
@@ -77,6 +102,30 @@ public class TaskTimerTest
         // Then
         Assert.True(timer.IsWorkTime);
         Assert.Equal(60 * timer.WorkMinutes, timer.RemainingSeconds);
+    }
+
+    [Fact]
+    public async Task StartAsync_CompletesSuccessfully()
+    {
+        // Given
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        var logger = loggerFactory.CreateLogger("TaskTimer");
+        
+        var timer = new TaskTimer(
+            WorkMinutes: 1,
+            BreakMinutes: 1,
+            IsWorkTime: true)
+        {
+            _timer = new TestPeriodicTimer(TimeSpan.FromMinutes(1))
+        };
+
+        // When
+        await timer.StartAsync();
+
+        // Then
+        Assert.False(timer.IsRunning);
+        Assert.Equal(0, timer.RemainingSeconds);
+        Assert.True(timer.IsWorkTime == false);  // Should switch to break time after work completes
     }
 
     [Fact]
