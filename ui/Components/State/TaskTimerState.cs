@@ -4,7 +4,7 @@ namespace ui.Components.State;
 
 public record TaskTimerState
 {
-    private static readonly Dictionary<int, string> ValidStates = [];
+    private static readonly Dictionary<string, string> ValidStates = [];
     private string timerStatus = ValidStates.FirstOrDefault().Value;
 
     /// <summary>
@@ -33,10 +33,10 @@ public record TaskTimerState
 
     private static void LoadValidStates()
     {
-        ValidStates.Add(0, "Stopped");
-        ValidStates.Add(1, "Running");
-        ValidStates.Add(2, "Paused");
-        ValidStates.Add(3, "Resumed");
+        ValidStates.Add("stop", "Stopped");
+        ValidStates.Add("run", "Running");
+        ValidStates.Add("pause", "Paused");
+        ValidStates.Add("resume", "Resumed");
     }
 
     private static string PrintValidStates()
@@ -48,4 +48,9 @@ public record TaskTimerState
         }
         return sbStates.ToString();
     }
+
+    public bool IsStopped => timerStatus == ValidStates["stop"];
+    public bool IsRunning => timerStatus == ValidStates["run"];
+    public bool IsPaused => timerStatus == ValidStates["pause"];
+    public bool IsResumed => timerStatus == ValidStates["resume"];
 }

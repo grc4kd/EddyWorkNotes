@@ -22,15 +22,12 @@ public record TaskTimer(TimeSpan PeriodTimeSpan) : ITaskTimer
     /// Gets or sets the remaining time in seconds for the current period.
     /// </summary>
     public TimeSpan Period { get; set; } = PeriodTimeSpan;
-
-    public bool IsRunning => throw new NotImplementedException();
+    private PeriodicTimer Timer = new(PeriodTimeSpan);
 
     /// <summary>
-    /// Event raised when the timer completes or is cancelled.
+    /// Event raised when the timer completes as expected (not cancelled).
     /// </summary>
     public event EventHandler? TimerCompleted;
-
-    private PeriodicTimer Timer = new(PeriodTimeSpan);
 
     /// <summary>
     /// Cancels the current timer operation and raises the TimerCompleted event.
@@ -42,17 +39,6 @@ public record TaskTimer(TimeSpan PeriodTimeSpan) : ITaskTimer
         {
             await _cts.CancelAsync();
         }
-
-        OnTimerCompleted(EventArgs.Empty);
-    }
-
-    /// <summary>
-    /// Raises the TimerCompleted event.
-    /// </summary>
-    /// <param name="e">EventArgs to pass with the event. Empty EventArgs will still raise a normal event.</param>
-    public virtual void OnTimerCompleted(EventArgs e)
-    {
-        TimerCompleted?.Invoke(this, e);
     }
 
     /// <summary>
@@ -73,8 +59,6 @@ public record TaskTimer(TimeSpan PeriodTimeSpan) : ITaskTimer
         if (!_cts.IsCancellationRequested)
         {
             await Timer.WaitForNextTickAsync(_cts.Token);
-            
-            OnTimerCompleted(EventArgs.Empty);
         }
     }
 
@@ -92,12 +76,8 @@ public record TaskTimer(TimeSpan PeriodTimeSpan) : ITaskTimer
         {
             LastEventTimeUtc = DateTimeOffset.UtcNow;
             Timer = new PeriodicTimer(Period);
+
             await Timer.WaitForNextTickAsync();
         }
-    }
-
-    public ValueTask<bool> WaitForNextTickAsync(CancellationToken cancellationToken = default)
-    {
-        throw new NotImplementedException();
     }
 }

@@ -7,19 +7,8 @@ public class TestPeriodicTimer(TimeSpan period) : ITaskTimer
     public bool IsRunning { get; private set; } = false;
 
     public event EventHandler? TimerCompleted;
-
-    event EventHandler? ITaskTimer.TimerCompleted
-    {
-        add
-        {
-            throw new NotImplementedException();
-        }
-
-        remove
-        {
-            throw new NotImplementedException();
-        }
-    }
+    public event EventHandler? TimerPaused;
+    public event EventHandler? TimerResumed;
 
     public Task StartAsync()
     {
@@ -41,11 +30,6 @@ public class TestPeriodicTimer(TimeSpan period) : ITaskTimer
     }
 
     Task ITaskTimer.ResumeAsync()
-    {
-        throw new NotImplementedException();
-    }
-
-    ValueTask<bool> ITaskTimer.WaitForNextTickAsync(CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
     }
@@ -114,8 +98,9 @@ public class TaskTimerTest
 
             // Then
             await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+            // The task was cancelled, but the timer was not completed.
             Assert.True(task.IsCanceled);
-            Assert.True(timerCompleted);
+            Assert.False(timerCompleted);   
         }
         finally
         {
@@ -144,8 +129,7 @@ public class TaskTimerTest
 
             // Then
             Assert.False(task.IsCanceled);
-            // Timer marked as completed when disposed
-            Assert.True(timerCompleted);
+            Assert.False(timerCompleted);
         }
         finally
         {
