@@ -8,4 +8,5 @@ public interface ITaskTimer
     Task ResumeAsync();
     Task CancelAsync();
     event EventHandler TimerCompleted;
+    virtual void OnTimerCompleted(EventArgs e) { }
 }

@@ -4,25 +4,17 @@ namespace Eddy;
 
 /// <summary>
 /// The TaskTimer record type encapsulates the behavior of a work/break timer.
-/// After the initial work period, a break period is started, then a new work period is started again.
-/// The timer continues like this indefinetely unless interrupted by the user or an exception.
+/// After the initial work period, a break period is started.
 /// </summary>
-/// <param name="WorkMinutes">The length of the work cycle in minutes.</param>
-/// <param name="BreakMinutes">The length of the break cycle in minutes.</param>
-/// <param name="IsWorkTime">Start with work time? Exposes additional state so method can be called starting with break time.</param>
-public record TaskTimer(TimeSpan PeriodTimeSpan) : ITaskTimer
+public record TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
 {
     private static readonly ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
     private readonly ILogger logger = factory.CreateLogger("TaskTimer");
 
     private readonly CancellationTokenSource _cts = new();
     protected DateTimeOffset LastEventTimeUtc { get; private set; } = DateTimeOffset.UtcNow;
-
-    /// <summary>
-    /// Gets or sets the remaining time in seconds for the current period.
-    /// </summary>
-    public TimeSpan Period { get; set; } = PeriodTimeSpan;
-    private PeriodicTimer Timer = new(PeriodTimeSpan);
+    public TimeSpan Period { get; set; } = InitialTimeSpan;
+    private PeriodicTimer Timer = new(InitialTimeSpan);
 
     /// <summary>
     /// Event raised when the timer completes as expected (not cancelled).
@@ -52,7 +44,7 @@ public record TaskTimer(TimeSpan PeriodTimeSpan) : ITaskTimer
     public async Task StartAsync()
     {
         LastEventTimeUtc = DateTimeOffset.UtcNow;
-        Timer = new PeriodicTimer(PeriodTimeSpan);
+        Timer = new PeriodicTimer(InitialTimeSpan);
         Period = Timer.Period;
 
         logger.LogInformation("Starting timer for {TimerPeriod} at {LastEventTimeUtc}.", Timer.Period, LastEventTimeUtc);

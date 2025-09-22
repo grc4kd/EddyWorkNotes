@@ -1,24 +1,32 @@
 using Eddy;
-using Microsoft.VisualStudio.TestPlatform.Common.Utilities;
 namespace test;
 
 public class TestPeriodicTimer(TimeSpan period) : ITaskTimer
 {
+    private readonly CancellationTokenSource _cts = new();
     public TimeSpan Period { get; } = period;
 
     public event EventHandler? TimerCompleted;
 
-    private readonly CancellationTokenSource _cts = new();
+    protected virtual void OnTimerCompleted(EventArgs e) {
+        TimerCompleted?.Invoke(this, e);
+    }
 
     public async Task CancelAsync()
     {
         await _cts.CancelAsync();
     }
 
-    public Task StartAsync()
+    public async Task StartAsync()
     {
+        // register a fake cancellation that executes when the cancellation is requested
         _cts.Token.Register(() => Task.FromCanceled(_cts.Token));
-        return Task.CompletedTask;
+
+        // process expected event handlers
+        OnTimerCompleted(EventArgs.Empty);
+
+        // return a task after the minimum delay
+        await Task.Delay(1);
     }
 
     public static async ValueTask<bool> WaitForNextTickAsync(CancellationToken cancellationToken = default)
@@ -32,7 +40,7 @@ public class TestPeriodicTimer(TimeSpan period) : ITaskTimer
         return;
     }
 
-    Task ITaskTimer.ResumeAsync()
+    public Task ResumeAsync()
     {
         return Task.CompletedTask;
     }

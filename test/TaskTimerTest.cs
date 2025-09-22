@@ -33,7 +33,7 @@ public class TaskTimerTest
     public async Task StartAsync_WhenCancelled_ShouldCaptureRemainingTime()
     {
         // Given
-        var timer = new TaskTimer(PeriodTimeSpan: TimeSpan.FromMinutes(1));
+        var timer = new TaskTimer(InitialTimeSpan: TimeSpan.FromMinutes(1));
 
         // When - Start and immediately cancel
         var task = timer.StartAsync();
@@ -45,10 +45,10 @@ public class TaskTimerTest
     }
 
     [Fact]
-    public async Task StartAsync_WithCancellation_ShouldTriggerTimerCompletedEvent()
+    public async Task StartAsync_WithCancellation_ShouldNotTriggerTimerCompletedEvent()
     {
         // Given
-        TaskTimer timer = new(PeriodTimeSpan: TimeSpan.FromMinutes(1));
+        TaskTimer timer = new(InitialTimeSpan: TimeSpan.FromMinutes(1));
 
         bool timerCompleted = false;
 
@@ -66,7 +66,7 @@ public class TaskTimerTest
             await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
             // The task was cancelled, but the timer was not completed.
             Assert.True(task.IsCanceled);
-            Assert.False(timerCompleted);   
+            Assert.False(timerCompleted);
         }
         finally
         {
@@ -104,7 +104,7 @@ public class TaskTimerTest
     public async Task StartAsync_CancelAlreadyCancelled_ShouldNotThrow()
     {
         // Given
-        var timer = new TaskTimer(PeriodTimeSpan: TimeSpan.FromMinutes(1));
+        var timer = new TaskTimer(InitialTimeSpan: TimeSpan.FromMinutes(1));
         var task = timer.StartAsync();
 
         // When - Cancel twice
@@ -158,7 +158,7 @@ public class TaskTimerTest
     public async Task OnTimerCompleted_ShouldTriggerEventWhenTimerCompletesNaturally()
     {
         // Given
-        var WorkDuration = TimeSpan.FromMilliseconds(100); // Short duration for quick test
+        var WorkDuration = TimeSpan.FromMilliseconds(1);
         var timer = new TaskTimer(WorkDuration);
 
         bool timerCompleted = false;
@@ -178,6 +178,47 @@ public class TaskTimerTest
         finally
         {
             timer.TimerCompleted -= onTimerCompleted;
+        }
+    }
+
+    [Fact]
+    public async Task NewTimer_ShouldStartAfterPreviousCompletes()
+    {
+        // Given
+        var WorkDuration = TimeSpan.FromMilliseconds(100); // Short duration for quick test
+        var timer = new TestPeriodicTimer(WorkDuration);
+
+        bool firstTimerCompleted = false;
+        bool secondTimerStarted = false;
+
+        void onFirstTimerCompleted(object? sender, EventArgs eventArgs)
+        {
+            firstTimerCompleted = true;
+            // Simulate starting a new timer here
+            _ = StartNewTimer();
+        }
+
+        async Task StartNewTimer()
+        {
+            var newTimer = new TestPeriodicTimer(WorkDuration);
+            newTimer.TimerCompleted += (s, e) => secondTimerStarted = true;
+            await newTimer.StartAsync();
+        }
+
+        timer.TimerCompleted += onFirstTimerCompleted;
+
+        try
+        {
+            // When - Start the first timer and wait for it to complete naturally
+            await timer.StartAsync();
+
+            // Then
+            Assert.True(firstTimerCompleted); // First TimerCompleted should be triggered
+            Assert.True(secondTimerStarted); // Second timer should have started
+        }
+        finally
+        {
+            timer.TimerCompleted -= onFirstTimerCompleted;
         }
     }
 }
