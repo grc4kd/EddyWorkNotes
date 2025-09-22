@@ -37,12 +37,55 @@
 
     private IJSObjectReference? module;
 
+    protected override async Task OnInitializedAsync()
+    {
+        _taskTimer = new Eddy.TaskTimer(WorkTimeSpan);
+        if (_taskTimer != null)
+        {
+            _taskTimer.TimerCompleted += OnTaskTimerCompleted;
+        }
+
+        await Task.CompletedTask;
+    }
+
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && module is null)
         {
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
         }
+    }
+
+    private async void OnTaskTimerCompleted(object? sender, EventArgs e)
+    {
+        // Switch to the next phase
+        CurrentPhase = CurrentPhase == "Work" ? "Break" : "Work";
+        StateHasChanged();
+
+        // Start the break timer if it's a break phase
+        if (CurrentPhase == "Break")
+        {
+            await CreatePhaseTimerAsync(BreakTimeSpan);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        ArgumentNullException.ThrowIfNull(_taskTimer);
+
+        if (module is not null)
+        {
+            try
+            {
+                await module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Handle exceptions if client JS module is disconnected
+            }
+        }
+
+        _taskTimer.TimerCompleted -= OnTaskTimerCompleted;
     }
 
     private async Task TogglePauseResumeAsync()
@@ -112,24 +155,5 @@
         }
         
         return format;
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        ArgumentNullException.ThrowIfNull(_taskTimer);
-
-        if (module is not null)
-        {
-            try
-            {
-                await module.DisposeAsync();
-            }
-            catch (JSDisconnectedException)
-            {
-                // Handle exceptions if client JS module is disconnected
-                
-            }
-        }
-
     }
 }

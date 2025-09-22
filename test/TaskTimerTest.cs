@@ -185,8 +185,8 @@ public class TaskTimerTest
     public async Task NewTimer_ShouldStartAfterPreviousCompletes()
     {
         // Given
-        var WorkDuration = TimeSpan.FromMilliseconds(100); // Short duration for quick test
-        var timer = new TestPeriodicTimer(WorkDuration);
+        var Duration = TimeSpan.FromMilliseconds(100); // Short duration for quick test
+        var timer = new TestPeriodicTimer(Duration);
 
         bool firstTimerCompleted = false;
         bool secondTimerStarted = false;
@@ -200,7 +200,7 @@ public class TaskTimerTest
 
         async Task StartNewTimer()
         {
-            var newTimer = new TestPeriodicTimer(WorkDuration);
+            var newTimer = new TestPeriodicTimer(Duration);
             newTimer.TimerCompleted += (s, e) => secondTimerStarted = true;
             await newTimer.StartAsync();
         }
