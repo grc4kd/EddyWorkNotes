@@ -27,15 +27,18 @@ public record TaskTimer(TimeSpan PeriodTimeSpan) : ITaskTimer
     /// <summary>
     /// Event raised when the timer completes as expected (not cancelled).
     /// </summary>
-    public event EventHandler? TimerCompleted;
+    public event EventHandler TimerCompleted = null!;
+
+    protected virtual void OnTimerCompleted(EventArgs e) {
+        TimerCompleted?.Invoke(this, e);
+    }
 
     /// <summary>
-    /// Cancels the current timer operation and raises the TimerCompleted event.
+    /// Cancels the current timer operation. Does *not* raise a timer event.
     /// </summary>
-    /// <returns>A task that represents the asynchronous cancellation.</returns>
     public async Task CancelAsync()
     {
-        if (!_cts.IsCancellationRequested)
+        if (_cts.Token.CanBeCanceled)
         {
             await _cts.CancelAsync();
         }
@@ -49,17 +52,14 @@ public record TaskTimer(TimeSpan PeriodTimeSpan) : ITaskTimer
     public async Task StartAsync()
     {
         LastEventTimeUtc = DateTimeOffset.UtcNow;
-
         Timer = new PeriodicTimer(PeriodTimeSpan);
         Period = Timer.Period;
 
         logger.LogInformation("Starting timer for {TimerPeriod} at {LastEventTimeUtc}.", Timer.Period, LastEventTimeUtc);
 
-        // If cancellation was requested, skip clock time updates
-        if (!_cts.IsCancellationRequested)
-        {
-            await Timer.WaitForNextTickAsync(_cts.Token);
-        }
+        await Timer.WaitForNextTickAsync(_cts.Token);
+
+        OnTimerCompleted(EventArgs.Empty);
     }
 
     public void Pause()

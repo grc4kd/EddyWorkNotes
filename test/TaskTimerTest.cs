@@ -126,10 +126,12 @@ public class TaskTimerTest
         var timer = new TaskTimer(WorkDuration);
 
         // When - Start and pause the timer
-        await timer.StartAsync();
-        timer.Pause();
+        var task = timer.StartAsync();
+        await timer.CancelAsync();
 
         // Then
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+        Assert.Equal(TaskStatus.Canceled, task.Status);
         Assert.Equal(WorkDuration, timer.Period);
     }
 
@@ -141,12 +143,15 @@ public class TaskTimerTest
         var timer = new TaskTimer(WorkDuration);
 
         // When - Start, pause, and then resume the timer
-        await timer.StartAsync();
+        var task = timer.StartAsync();
         timer.Pause();
-        await timer.ResumeAsync();
+        await task;
+        var task2 = timer.ResumeAsync();
 
         // Then
-        Assert.Equal(WorkDuration, timer.Period);
+        Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+        Assert.Equal(TaskStatus.WaitingForActivation, task2.Status);
+        Assert.Equal(WorkDuration.TotalSeconds, timer.Period.TotalSeconds, 0.01d);
     }
 
     [Fact]
