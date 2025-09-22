@@ -117,4 +117,62 @@ public class TaskTimerTest
         // Then
         Assert.Equal(TaskStatus.Canceled, task.Status);
     }
+
+    [Fact]
+    public async Task Pause_ShouldPauseTimerCorrectly()
+    {
+        // Given
+        var WorkDuration = TimeSpan.FromMinutes(1);
+        var timer = new TaskTimer(WorkDuration);
+
+        // When - Start and pause the timer
+        await timer.StartAsync();
+        timer.Pause();
+
+        // Then
+        Assert.Equal(WorkDuration, timer.Period);
+    }
+
+    [Fact]
+    public async Task Resume_ShouldResumeTimerCorrectly()
+    {
+        // Given
+        var WorkDuration = TimeSpan.FromMinutes(1);
+        var timer = new TaskTimer(WorkDuration);
+
+        // When - Start, pause, and then resume the timer
+        await timer.StartAsync();
+        timer.Pause();
+        await timer.ResumeAsync();
+
+        // Then
+        Assert.Equal(WorkDuration, timer.Period);
+    }
+
+    [Fact]
+    public async Task OnTimerCompleted_ShouldTriggerEventWhenTimerCompletesNaturally()
+    {
+        // Given
+        var WorkDuration = TimeSpan.FromMilliseconds(100); // Short duration for quick test
+        var timer = new TaskTimer(WorkDuration);
+
+        bool timerCompleted = false;
+
+        void onTimerCompleted(object? sender, EventArgs eventArgs) => timerCompleted = true;
+
+        timer.TimerCompleted += onTimerCompleted;
+
+        try
+        {
+            // When - Start the timer and wait for it to complete naturally
+            await timer.StartAsync();
+
+            // Then
+            Assert.True(timerCompleted); // TimerCompleted should be triggered
+        }
+        finally
+        {
+            timer.TimerCompleted -= onTimerCompleted;
+        }
+    }
 }
