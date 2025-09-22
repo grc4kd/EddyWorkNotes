@@ -26,7 +26,7 @@ public partial class TaskTimerTests : PageTest
         await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Start" })).ToBeEnabledAsync();
 
         // Click the start button
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Start" }).ClickAsync(new() { Force = true });
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Start" }).ClickAsync();
 
         // Check new page state
         await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Pause" })).ToBeEnabledAsync();

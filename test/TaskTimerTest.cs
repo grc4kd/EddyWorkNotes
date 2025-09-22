@@ -1,11 +1,31 @@
 using Eddy;
-
 namespace test;
 
-public class TestPeriodicTimer(TimeSpan period) : IPeriodicTimer
+public class TestPeriodicTimer(TimeSpan period) : ITaskTimer
 {
     public TimeSpan Period { get; } = period;
     public bool IsRunning { get; private set; } = false;
+
+    public event EventHandler? TimerCompleted;
+
+    event EventHandler? ITaskTimer.TimerCompleted
+    {
+        add
+        {
+            throw new NotImplementedException();
+        }
+
+        remove
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public Task StartAsync()
+    {
+        IsRunning = true;
+        return Task.CompletedTask;
+    }
 
     public async ValueTask<bool> WaitForNextTickAsync(CancellationToken cancellationToken = default)
     {
@@ -13,6 +33,21 @@ public class TestPeriodicTimer(TimeSpan period) : IPeriodicTimer
 
         // Immediately complete the timer for testing purposes
         return await ValueTask.FromResult(true);
+    }
+
+    void ITaskTimer.Pause()
+    {
+        throw new NotImplementedException();
+    }
+
+    Task ITaskTimer.ResumeAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    ValueTask<bool> ITaskTimer.WaitForNextTickAsync(CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
     }
 }
 
@@ -26,7 +61,7 @@ public class TaskTimerTest
         var timer = new TaskTimer(WorkDuration);
 
         // Then
-        Assert.Equal(WorkDuration, timer.RemainingTime);
+        Assert.Equal(WorkDuration, timer.Period);
     }
 
     [Fact]
@@ -41,14 +76,14 @@ public class TaskTimerTest
 
         // Then
         Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
-        Assert.Equal(WorkDuration, timer.RemainingTime);
+        Assert.Equal(WorkDuration, timer.Period);
     }
 
     [Fact]
     public async Task StartAsync_WhenCancelled_ShouldCaptureRemainingTime()
     {
         // Given
-        var timer = new TaskTimer(Duration: TimeSpan.FromMinutes(1));
+        var timer = new TaskTimer(PeriodTimeSpan: TimeSpan.FromMinutes(1));
 
         // When - Start and immediately cancel
         var task = timer.StartAsync();
@@ -63,7 +98,7 @@ public class TaskTimerTest
     public async Task StartAsync_WithCancellation_ShouldTriggerTimerCompletedEvent()
     {
         // Given
-        TaskTimer timer = new(Duration: TimeSpan.FromMinutes(1));
+        TaskTimer timer = new(PeriodTimeSpan: TimeSpan.FromMinutes(1));
 
         bool timerCompleted = false;
 
@@ -92,7 +127,7 @@ public class TaskTimerTest
     public async Task OnTimerCompleted_ShouldTriggerEventWhenTimerIsCancelled()
     {
         // Given
-        TaskTimer timer = new(Duration: TimeSpan.FromMinutes(1));
+        TaskTimer timer = new(PeriodTimeSpan: TimeSpan.FromMinutes(1));
 
         bool timerCompleted = false;
 
@@ -122,7 +157,7 @@ public class TaskTimerTest
     public async Task StartAsync_CancelAlreadyCancelled_ShouldNotThrow()
     {
         // Given
-        var timer = new TaskTimer(Duration: TimeSpan.FromMinutes(1));
+        var timer = new TaskTimer(PeriodTimeSpan: TimeSpan.FromMinutes(1));
         var task = timer.StartAsync();
 
         // When - Cancel twice

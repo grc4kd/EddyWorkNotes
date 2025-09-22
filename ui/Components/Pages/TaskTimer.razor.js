@@ -1,77 +1,65 @@
-class TimerManager {
-    #intervalId;
-    INTERVAL_DELAY_SEC = 1
-    remainingTimeSeconds = 0;
-    isRunning = false;
+let intervalId = 0;
+const INTERVAL_DELAY_SEC = 1
+let remainingTimeSeconds = 0;
+let isRunning = false;
 
-    // format total seconds into whole minutes and seconds in MM:SS format
-    formatTime(seconds) {
-        let format = "";
-        
-        if (seconds >= 0) {
-            const formatMM = Math.floor(seconds / 60).toString().padStart(2, '0');
-            const formatSS = (seconds % 60).toFixed(0).padStart(2, '0');
+// format total seconds into whole minutes and seconds in MM:SS format
+export function formatTime(seconds) {
+    let format = "";
 
-            format =`${formatMM}:${formatSS}`
-        }
-        
-        return format;
+    if (seconds >= 0) {
+        const formatMM = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const formatSS = (seconds % 60).toFixed(0).padStart(2, '0');
+
+        format = `${formatMM}:${formatSS}`
     }
 
-    updateDisplay() {
-        const display = document.getElementById('timerDisplay');
-        const formatTime = this.formatTime(this.remainingTimeSeconds);
-        if (display && formatTime) {
-            display.textContent = `${formatTime} remaining`;
-        }
-    }
+    return format;
+}
 
-    tick() {
-        if (this.isRunning) {
-            // always count tick and update timer display
-            this.remainingTimeSeconds -= this.INTERVAL_DELAY_SEC;
-            this.updateDisplay();
-        }
-
-        if (this.remainingTimeSeconds <= 0) {
-            this.remainingTimeSeconds = 0;
-            clearInterval(this.#intervalId);
-        }
-    }
-
-    pause() {
-        if (this.#intervalId > 0) {
-            clearInterval(this.#intervalId);
-            this.isRunning = false;
-        }
-    }
-
-    togglePause() {
-        if (this.isRunning) {
-            this.pause();
-        } else if (this.remainingTimeSeconds > 0) {
-            this.run();
-        }
+function updateDisplay() {
+    const display = document.getElementById('timerDisplay');
+    const formattedTime = formatTime(remainingTimeSeconds);
+    if (display && formattedTime) {
+        display.textContent = `${formattedTime} remaining`;
     }
 }
 
-let timerManager;
-export function init() {
-    timerManager = new TimerManager();
+function tick() {
+    if (isRunning) {
+        // always count tick and update timer display
+        remainingTimeSeconds -= INTERVAL_DELAY_SEC;
+        updateDisplay();
+    }
+
+    if (remainingTimeSeconds <= 0) {
+        remainingTimeSeconds = 0;
+        clearInterval(intervalId);
+    }
 }
-export function tick() {
-    timerManager.tick();
+
+function pause() {
+    if (intervalId > 0) {
+        clearInterval(intervalId);
+        isRunning = false;
+    }
 }
+
+export function togglePause() {
+    if (isRunning) {
+        pause();
+    } else if (remainingTimeSeconds > 0) {
+        run();
+    }
+}
+
 export function run(durationSeconds) {
-    // stop any running timers
-    if (timerManager.intervalId > 0) {
-        clearInterval(timerManager.intervalId);
+    // stop any running timers that were already running
+    if (intervalId > 0) {
+        clearInterval(intervalId);
     }
 
-    timerManager.isRunning = true;
-    timerManager.remainingTimeSeconds = durationSeconds;
-    timerManager.intervalId = setInterval(tick, timerManager.INTERVAL_DELAY_SEC * 1000);
-}
-export function pause() {
-    timerManager.pause();
+    isRunning = true;
+    remainingTimeSeconds = durationSeconds;
+    intervalId = setInterval(tick, INTERVAL_DELAY_SEC * 1000);
 }

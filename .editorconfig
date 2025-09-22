@@ -1,0 +1,4 @@
+[*.cs]
+
+# The event 'namespace.event' is never used. (CS0067)
+dotnet_diagnostic.CS0067.severity = none

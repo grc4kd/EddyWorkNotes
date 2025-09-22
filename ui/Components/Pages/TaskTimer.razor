@@ -1,5 +1,6 @@
 @page "/tasktimer"
 @using System.Threading.Tasks
+@using ui.Components.State
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 @inject IJSRuntime JS
@@ -14,32 +15,33 @@
 
         <div class="mb-3">
             <p>Time:&nbsp
-                <span id='timerDisplay'>@FormatTime(_taskTimer.RemainingSeconds)</span>
+                <span id='timerDisplay'>@FormatTime(_taskTimer.Period)</span>
             </p>
             <p>Current Phase: @CurrentPhase</p>
-            <p>Status: @TimerStatus</p>
+            <p>Status: @State</p>
         </div>
 
-        <button @onclick="StartTimerAsync" class="btn btn-primary me-2">Start</button>
+        <button @onclick="StartTimerCycleAsync" class="btn btn-primary me-2">Start</button>
         <button @onclick="TogglePauseAsync" class="btn btn-warning">@TogglePauseText</button>
     </div>
 </div>
 
 @code {
-    private const int DefaultWorkMinutes = 25;
-    private const int DefaultBreakMinutes = 5;
+    private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(25);
+    private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(5);
 
-    private Eddy.TaskTimer _taskTimer = new Eddy.TaskTimer(DefaultWorkMinutes, DefaultBreakMinutes);
-    public string TimerStatus { get; protected set; } = "Idle";
-    private string CurrentPhase { get; set; } = string.Empty;
-    private string TogglePauseText { get { return _taskTimer.IsRunning ? "Pause" : "Resume"; } }
+    public ITaskTimer _taskTimer = new Eddy.TaskTimer(WorkTimeSpan);
+    public TaskTimerState State { get; private set; } = new("Stopped");
+    public string CurrentPhase { get; private set; } = string.Empty;
+    private string TogglePauseText { get { return State.TimerStatus == "Idle" ? "Resume" : "Pause"; } }
     private IJSObjectReference? module;
 
     protected override Task OnInitializedAsync()
     {
-        void onTimerStopped(object? sender, EventArgs eventArgs) { 
-            TimerStatus = $"{CurrentPhase} timer stopped.";
-            InvokeAsync(StateHasChanged);
+        void onTimerStopped(object? sender, EventArgs eventArgs)
+        {
+            State = new("Stopped");
+            StateHasChanged();
         }
         _taskTimer.TimerCompleted += onTimerStopped;
         return Task.CompletedTask;
@@ -50,16 +52,22 @@
         if (firstRender)
         {
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
-            await module.InvokeVoidAsync("init");
         }
     }
 
-    public async Task TogglePauseAsync()
+    async Task TogglePauseAsync()
     {
-        if (module != null && _taskTimer.IsRunning)
+        ArgumentNullException.ThrowIfNull(module);
+        if (State.TimerStatus == "Stopped")
         {
-            await module.InvokeVoidAsync("pause");
-            _taskTimer.TogglePause();
+            await module.InvokeVoidAsync("run", _taskTimer.Period.TotalSeconds);
+            await _taskTimer.ResumeAsync();
+            State = new("Resumed");
+        }
+        else
+        {
+            await module.InvokeVoidAsync("togglePause");
+            _taskTimer.Pause();
         }
     }
 
@@ -77,55 +85,43 @@
         }
     }
 
-    public async Task StartTimerAsync()
+    public async Task CreatePhaseTimerAsync(TimeSpan duration)
     {
-        async Task createTimerAsync(int durationSeconds)
+        // start client-side timer first
+        if (module != null)
         {
-            // start client-side timer first
-            if (module != null)
-            {
-                await module.InvokeVoidAsync("run", durationSeconds);
-            }
-
-            // update page state
-            CurrentPhase = _taskTimer.IsWorkTime ? "Work" : "Break";
-            TimerStatus = $"Started {CurrentPhase} timer.";
-            var task = _taskTimer.StartAsync();
-            await InvokeAsync(StateHasChanged);
-            await task;
+            await module.InvokeVoidAsync("run", duration.TotalSeconds);
         }
 
-        // Only start timer if not currently running / stopped
-        // Run work timer first (if starting with work)
-        if (!_taskTimer.IsRunning && _taskTimer.IsWorkTime)
-        {
-            await createTimerAsync(60 * _taskTimer.WorkMinutes);
+        // update razor page state
+        CurrentPhase = CurrentPhase == "Work" ? "Break" : "Work";
+        State = new("Running");
+        StateHasChanged();
 
-            _taskTimer.IsWorkTime = false;
-        }
-
-        // Then, run break timer. Then stop timer.
-        if (_taskTimer.IsRunning && !_taskTimer.IsWorkTime)
-        {
-            await createTimerAsync(60 * _taskTimer.BreakMinutes);
-
-            _taskTimer.IsWorkTime = true;
-        }
+        // wait for the server-side timer task to complete
+        _taskTimer = new Eddy.TaskTimer(duration);
+        await _taskTimer.StartAsync();
     }
 
-    private string FormatTime(double? seconds)
+    public async Task StartTimerCycleAsync()
     {
-        string format = "";
+        await CreatePhaseTimerAsync(WorkTimeSpan);
 
-        // set time to zero on null inputs
-        seconds ??= 0;
-
-        if (seconds > 0) {
-            int minutes = (int)(seconds / 60);
-            int remainingSeconds = (int)seconds % 60;
-            format = $"{minutes:D2}:{remainingSeconds:D2}";
+        // run the timer for a second time on ending the work phase
+        if (CurrentPhase == "Work")
+        {
+            await CreatePhaseTimerAsync(BreakTimeSpan);
         }
 
-        return format;
+        // set the final state after all timers are complete
+        State = new("Stopped");
     }
+
+    string FormatTime(TimeSpan timespan)
+    {
+        return timespan.ToString(@"mm\:ss");
+    }
+
+    
 }
+
