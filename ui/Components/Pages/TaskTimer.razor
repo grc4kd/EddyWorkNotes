@@ -27,8 +27,8 @@
 </div>
 
 @code {
-    private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(25);
-    private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(1);
 
     private ITaskTimer? _taskTimer = new Eddy.TaskTimer(WorkTimeSpan);
     public TaskTimerState State { get; private set; } = new("Stopped");
@@ -115,7 +115,7 @@
         }
 
         // automatically start the break cycle
-        if (CurrentPhase == "Break" && State.IsRunning)
+        if (CurrentPhase == "Break" && State.IsStopped)
         {
             await CreatePhaseTimerAsync(BreakTimeSpan);
         }
@@ -137,11 +137,13 @@
         _taskTimer = new Eddy.TaskTimer(duration);
         await _taskTimer.StartAsync();
 
-        // Change to the next phase if the timer has stopped (not running or paused)
-        if (State.IsStopped) {
-            CurrentPhase = CurrentPhase == "Work" ? "Break" : "Work";
-            StateHasChanged();
+        // Change to the next phase automatically
+        if (CurrentPhase == "Work") {
+            CurrentPhase = "Break";
         }
+
+        State = new("Stopped");
+        StateHasChanged();
     }
 
     private string FormatTime()
