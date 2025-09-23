@@ -16,8 +16,24 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
     public TimeSpan Period { get; set; } = InitialTimeSpan;
     private PeriodicTimer Timer = new(InitialTimeSpan);
 
-    // Change TimerCompleted to use Func<Task>
-    public Func<Task>? TimerCompleted { get; set; }
+    private bool timerCompleted = false;
+
+    public Func<Task>? TimerCompleted
+    {
+        get => () => Task.FromResult(timerCompleted);
+        set
+        {
+            if (!_cts.IsCancellationRequested)
+            {
+                var task = value?.Invoke();
+
+                if (task != null && task.IsCompleted)
+                {
+                    timerCompleted = true;
+                }
+            }
+        }
+    }
 
     protected virtual async Task OnTimerCompleted()
     {
