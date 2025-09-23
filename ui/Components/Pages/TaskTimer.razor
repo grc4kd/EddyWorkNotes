@@ -16,10 +16,11 @@
         <h3 class="card-title">Pomodoro Timer</h3>
 
         <div class="mb-3">
-            <div class="mb-3" asp-for="timeRemaining">
-                Time Remaining
-                <div id='timerDisplay' class="mb-6 float-end">@TimeRemaining</div>
-            </div>
+            <p>Time:&nbsp;
+                <span id='timerDisplay'></span>
+            </p>
+            <p>Current Phase: @CurrentPhase</p>
+            <p>Status: @State.TimerStatus</p>
         </div>
 
         <p>Current Phase: @CurrentPhase</p>
@@ -30,8 +31,8 @@
 </div>
 
 @code {
-    private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(25);
-    private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(1);
 
     public TimeSpan TimeRemaining { get; private set; } = WorkTimeSpan;
     public string CurrentPhase { get; private set; } = "Work";
@@ -39,7 +40,6 @@
     private string TogglePauseResumeText => CurrentState.IsPaused ? "Resume" : "Pause";
 
     private IJSObjectReference? module;
-    private int elapsedCount = 0;
 
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
@@ -47,19 +47,6 @@
         {
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
         }
-
-        if (firstRender && notifierService is not null)
-        {
-            Func<string, int, Task>? subscriber = (a, b) =>
-            {
-                elapsedCount++;
-
-                return Task.FromResult(elapsedCount);
-            };
-
-            notifierService.Notify += subscriber;
-        }
-    }
 
     public async ValueTask DisposeAsync()
     {
@@ -80,34 +67,64 @@
     {
         elapsedCount = 0;
 
-        // work and break cycles counted twice
-        var cycleCount = 4;
-        var totalCycleCount = cycleCount * 2;
-
-        CurrentState = TaskTimerState.Running;
-
-        while (elapsedCount < totalCycleCount)
+        if (State.TimerStatus == "Paused" && _taskTimer.Period > TimeSpan.Zero)
         {
-            TimeRemaining = WorkTimeSpan;
-            CurrentPhase = "Work";
+            await module.InvokeVoidAsync("run", Math.Floor(_taskTimer.Period.TotalSeconds));
+
+            State = new("Running");
             StateHasChanged();
 
-            // start a javascript timer on the client
-            module?.InvokeVoidAsync("run", WorkTimeSpan.TotalSeconds);
-            // then, call and wait for the periodic timer on the server
-            await taskTimerService.StartAsync(WorkTimeSpan);
-
-            TimeRemaining = BreakTimeSpan;
-            CurrentPhase = "Break";
-            StateHasChanged();
-
-            module?.InvokeVoidAsync("run", BreakTimeSpan.TotalSeconds);
-            await taskTimerService.StartAsync(BreakTimeSpan);
+            await _taskTimer.ResumeAsync();
+            await StartTimerCycleAsync();
         }
+        else if (State.TimerStatus == "Running")
+        {
+            await module.InvokeVoidAsync("pause");
+            State = new("Paused");
+            StateHasChanged();
+            _taskTimer.Pause();
+        }
+    }
 
-        TimeRemaining = TimeSpan.Zero;
-        CurrentState = TaskTimerState.Stopped;
-        CurrentPhase = $"Stopped after {elapsedCount} cycles.";
+    public async Task StartTimerCycleAsync()
+    {
+        while (State.IsStopped)
+        {
+            // only start the timer if it was previously stopped
+            if (CurrentPhase == "Work")
+            {
+                await CreatePhaseTimerAsync(WorkTimeSpan);
+            }
+
+            // automatically start the break cycle
+            if (CurrentPhase == "Break")
+            {
+                await CreatePhaseTimerAsync(BreakTimeSpan);
+            }
+        }
+    }
+
+    private async Task CreatePhaseTimerAsync(TimeSpan duration)
+    {
+        // Start client-side timer first
+        if (module != null)
+        {
+            await module.InvokeVoidAsync("run", Math.Floor(duration.TotalSeconds));
+        }
+        _taskTimer = new Eddy.TaskTimer(duration);
+
+        // Update page state to running
+        State = new("Running");
         StateHasChanged();
+
+        // Then, after the page state is up-to-date, wait for the server-side timer task to complete
+        await _taskTimer.StartAsync();
+
+        // Change to the next phase automatically
+        if (State.IsRunning) {
+            CurrentPhase = CurrentPhase == "Break" ? "Work" : "Break";
+            State = new("Stopped");
+            StateHasChanged();
+        }
     }
 }
