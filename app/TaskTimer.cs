@@ -37,6 +37,9 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
 
     protected virtual async Task OnTimerCompleted()
     {
+        LastEventTimeUtc = DateTimeOffset.UtcNow;
+        logger.LogInformation("Timer completed at {LastEventTimeUtc}.", LastEventTimeUtc);
+
         if (TimerCompleted != null)
         {
             await TimerCompleted();
@@ -50,6 +53,9 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
     {
         if (_cts.Token.CanBeCanceled)
         {
+            LastEventTimeUtc = DateTimeOffset.UtcNow;
+            logger.LogInformation("Timer cancelled at {LastEventTimeUtc}.", LastEventTimeUtc);
+
             await _cts.CancelAsync();
         }
     }
@@ -62,19 +68,24 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
     public async Task StartAsync()
     {
         LastEventTimeUtc = DateTimeOffset.UtcNow;
+        logger.LogInformation("Timer started at {LastEventTimeUtc}.", LastEventTimeUtc);
 
         Timer.Dispose();
         Timer = new(Period);
-        await Timer.WaitForNextTickAsync(_cts.Token);
 
+        await Timer.WaitForNextTickAsync(_cts.Token);
+        
         await OnTimerCompleted();
     }
 
     public void Pause()
     {
         var elapsed = DateTimeOffset.UtcNow - LastEventTimeUtc;
+
         Period -= elapsed;
+
         LastEventTimeUtc = DateTimeOffset.UtcNow;
+        logger.LogInformation("Timer paused at {LastEventTimeUtc}.", LastEventTimeUtc);
 
         Timer.Dispose();
     }
@@ -84,6 +95,8 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
         if (Period > TimeSpan.Zero && !_cts.IsCancellationRequested)
         {
             LastEventTimeUtc = DateTimeOffset.UtcNow;
+            logger.LogInformation("Timer resumed at {LastEventTimeUtc}.", LastEventTimeUtc);
+            
             Timer = new PeriodicTimer(Period);
 
             await Timer.WaitForNextTickAsync(_cts.Token);
