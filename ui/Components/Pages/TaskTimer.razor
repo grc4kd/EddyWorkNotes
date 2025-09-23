@@ -15,7 +15,7 @@
 
         <div class="mb-3">
             <p>Time:&nbsp;
-                <span id='timerDisplay'>@FormatTime()</span>
+                <span id='timerDisplay'></span>
             </p>
             <p>Current Phase: @CurrentPhase</p>
             <p>Status: @State.TimerStatus</p>
@@ -27,8 +27,8 @@
 </div>
 
 @code {
-    private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(25);
-    private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(1);
 
     private ITaskTimer? _taskTimer = new Eddy.TaskTimer(WorkTimeSpan);
     public TaskTimerState State { get; private set; } = new("Stopped");
@@ -37,35 +37,11 @@
 
     private IJSObjectReference? module;
 
-    protected override async Task OnInitializedAsync()
-    {
-        _taskTimer = new Eddy.TaskTimer(WorkTimeSpan);
-        if (_taskTimer != null)
-        {
-            _taskTimer.TimerCompleted += OnTaskTimerCompleted;
-        }
-
-        await Task.CompletedTask;
-    }
-
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && module is null)
         {
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
-        }
-    }
-
-    private async void OnTaskTimerCompleted(object? sender, EventArgs e)
-    {
-        // Switch to the next phase
-        CurrentPhase = CurrentPhase == "Work" ? "Break" : "Work";
-        StateHasChanged();
-
-        // Start the break timer if it's a break phase
-        if (CurrentPhase == "Break")
-        {
-            await CreatePhaseTimerAsync(BreakTimeSpan);
         }
     }
 
@@ -84,8 +60,6 @@
                 // Handle exceptions if client JS module is disconnected
             }
         }
-
-        _taskTimer.TimerCompleted -= OnTaskTimerCompleted;
     }
 
     private async Task TogglePauseResumeAsync()
@@ -93,31 +67,40 @@
         ArgumentNullException.ThrowIfNull(module);
         ArgumentNullException.ThrowIfNull(_taskTimer);
 
-        if (State.TimerStatus == "Paused")
+        if (State.TimerStatus == "Paused" && _taskTimer.Period > TimeSpan.Zero)
         {
-            await module.InvokeVoidAsync("togglePause");
+            await module.InvokeVoidAsync("run", Math.Floor(_taskTimer.Period.TotalSeconds));
+
+            State = new("Running");
+            StateHasChanged();
+
             await _taskTimer.ResumeAsync();
+            await StartTimerCycleAsync();
         }
         else if (State.TimerStatus == "Running")
         {
-            await module.InvokeVoidAsync("togglePause");
+            await module.InvokeVoidAsync("pause");
             State = new("Paused");
+            StateHasChanged();
             _taskTimer.Pause();
         }
     }
 
     public async Task StartTimerCycleAsync()
     {
-        // only start the timer if it was previously stopped
-        if (State.IsStopped)
+        while (State.IsStopped)
         {
-            await CreatePhaseTimerAsync(WorkTimeSpan);
-        }
+            // only start the timer if it was previously stopped
+            if (CurrentPhase == "Work")
+            {
+                await CreatePhaseTimerAsync(WorkTimeSpan);
+            }
 
-        // automatically start the break cycle
-        if (CurrentPhase == "Break" && State.IsStopped)
-        {
-            await CreatePhaseTimerAsync(BreakTimeSpan);
+            // automatically start the break cycle
+            if (CurrentPhase == "Break")
+            {
+                await CreatePhaseTimerAsync(BreakTimeSpan);
+            }
         }
     }
 
@@ -126,36 +109,22 @@
         // Start client-side timer first
         if (module != null)
         {
-            await module.InvokeVoidAsync("run", duration.TotalSeconds);
+            await module.InvokeVoidAsync("run", Math.Floor(duration.TotalSeconds));
         }
+        _taskTimer = new Eddy.TaskTimer(duration);
 
         // Update page state to running
         State = new("Running");
         StateHasChanged();
 
         // Then, after the page state is up-to-date, wait for the server-side timer task to complete
-        _taskTimer = new Eddy.TaskTimer(duration);
         await _taskTimer.StartAsync();
 
         // Change to the next phase automatically
-        if (CurrentPhase == "Work") {
-            CurrentPhase = "Break";
+        if (State.IsRunning) {
+            CurrentPhase = CurrentPhase == "Break" ? "Work" : "Break";
+            State = new("Stopped");
+            StateHasChanged();
         }
-
-        State = new("Stopped");
-        StateHasChanged();
-    }
-
-    private string FormatTime()
-    {
-        var format = "";
-        
-        if (_taskTimer == null) {
-            format = string.Empty;
-        } else {
-            format = _taskTimer.Period.ToString(@"mm\:ss");
-        }
-        
-        return format;
     }
 }

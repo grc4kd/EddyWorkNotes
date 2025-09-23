@@ -1,65 +1,62 @@
-let intervalId = 0;
-const INTERVAL_DELAY_SEC = 1
+const INTERVAL_DELAY_MS = 1000
+
+let intervalId = null;
 let remainingTimeSeconds = 0;
 let isRunning = false;
 
-// format total seconds into whole minutes and seconds in MM:SS format
-export function formatTime(seconds) {
-    let format = "";
+// Format total seconds into whole minutes and seconds in MM:SS format
+export function formatTime(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.floor(totalSeconds % 60);
 
-    if (seconds >= 0) {
-        const formatMM = Math.floor(seconds / 60).toString().padStart(2, '0');
-        const formatSS = (seconds % 60).toFixed(0).padStart(2, '0');
-
-        format = `${formatMM}:${formatSS}`
-    }
-
-    return format;
+  // Pad single-digit numbers with a leading zero for consistent formatting
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 function updateDisplay() {
-    const display = document.getElementById('timerDisplay');
-    const formattedTime = formatTime(remainingTimeSeconds);
-    if (display && formattedTime) {
-        display.textContent = `${formattedTime} remaining`;
+    const elementId = 'timerDisplay';
+    const display = document.getElementById(elementId);
+    if (display) {
+        display.textContent = `${formatTime(remainingTimeSeconds)} remaining`;
+    } else {
+        console.error(`Element with id ${elementId} not found.`);
     }
 }
 
 function tick() {
-    if (isRunning) {
-        // always count tick and update timer display
-        remainingTimeSeconds -= INTERVAL_DELAY_SEC;
-        updateDisplay();
-    }
+    if (!isRunning) return;
+
+    // always count tick and update timer display
+    remainingTimeSeconds -= 1;
+    updateDisplay();
 
     if (remainingTimeSeconds <= 0) {
         remainingTimeSeconds = 0;
-        clearInterval(intervalId);
+        stop();
     }
 }
 
-function pause() {
-    if (intervalId > 0) {
+export function pause() {
+    if (intervalId && isRunning) {
         clearInterval(intervalId);
+        intervalId = null;
         isRunning = false;
-    }
-}
-
-export function togglePause() {
-    if (isRunning) {
-        pause();
-    } else if (remainingTimeSeconds > 0) {
-        run();
     }
 }
 
 export function run(durationSeconds) {
     // stop any running timers that were already running
-    if (intervalId > 0) {
-        clearInterval(intervalId);
-    }
+    stop();
 
     isRunning = true;
     remainingTimeSeconds = durationSeconds;
-    intervalId = setInterval(tick, INTERVAL_DELAY_SEC * 1000);
+    intervalId = setInterval(tick, INTERVAL_DELAY_MS);
+}
+
+function stop() {
+    if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+    }
+    isRunning = false;
 }

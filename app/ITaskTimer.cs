@@ -7,6 +7,5 @@ public interface ITaskTimer
     void Pause();
     Task ResumeAsync();
     Task CancelAsync();
-    event EventHandler TimerCompleted;
-    virtual void OnTimerCompleted(EventArgs e) { }
+    Func<Task>? TimerCompleted { get; set; }
 }

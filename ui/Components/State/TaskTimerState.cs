@@ -36,7 +36,6 @@ public record TaskTimerState
         ValidStates.Add("stop", "Stopped");
         ValidStates.Add("run", "Running");
         ValidStates.Add("pause", "Paused");
-        ValidStates.Add("resume", "Resumed");
     }
 
     private static string PrintValidStates()
@@ -52,5 +51,4 @@ public record TaskTimerState
     public bool IsStopped => timerStatus == ValidStates["stop"];
     public bool IsRunning => timerStatus == ValidStates["run"];
     public bool IsPaused => timerStatus == ValidStates["pause"];
-    public bool IsResumed => timerStatus == ValidStates["resume"];
 }

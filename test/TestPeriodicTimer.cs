@@ -6,10 +6,24 @@ public class TestPeriodicTimer(TimeSpan period) : ITaskTimer
     private readonly CancellationTokenSource _cts = new();
     public TimeSpan Period { get; } = period;
 
-    public event EventHandler? TimerCompleted;
+    private bool timerCompleted = false;
 
-    protected virtual void OnTimerCompleted(EventArgs e) {
-        TimerCompleted?.Invoke(this, e);
+    public Func<Task>? TimerCompleted
+    {
+        get => () => Task.FromResult(timerCompleted);
+        set
+        {
+            if (!_cts.IsCancellationRequested)
+            {
+                var task = value?.Invoke();
+                task?.Wait();
+            }
+        }
+    }
+
+    protected virtual void OnTimerCompleted(EventArgs e)
+    {
+        TimerCompleted?.Invoke();
     }
 
     public async Task CancelAsync()
@@ -19,14 +33,15 @@ public class TestPeriodicTimer(TimeSpan period) : ITaskTimer
 
     public async Task StartAsync()
     {
-        // register a fake cancellation that executes when the cancellation is requested
-        _cts.Token.Register(() => Task.FromCanceled(_cts.Token));
+        if (!_cts.IsCancellationRequested)
+        {
+            // process expected event handlers
+            OnTimerCompleted(EventArgs.Empty);
 
-        // process expected event handlers
-        OnTimerCompleted(EventArgs.Empty);
+            // return a task after the minimum delay
+            await Task.Delay(1);
+        }
 
-        // return a task after the minimum delay
-        await Task.Delay(1);
     }
 
     public static async ValueTask<bool> WaitForNextTickAsync(CancellationToken cancellationToken = default)

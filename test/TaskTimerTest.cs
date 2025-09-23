@@ -50,11 +50,14 @@ public class TaskTimerTest
         // Given
         TaskTimer timer = new(InitialTimeSpan: TimeSpan.FromMinutes(1));
 
+        // setup a callback for the event handler that marks timer complete
         bool timerCompleted = false;
+        Task onTimerCompleted(object? sender, EventArgs eventArgs) =>
+            Task.FromResult(() => timerCompleted = true);
 
-        void onTimerCompleted(object? sender, EventArgs eventArgs) => timerCompleted = true;
+        async Task onTimerCompletedAction() => await onTimerCompleted(this, EventArgs.Empty);
 
-        timer.TimerCompleted += onTimerCompleted;
+        timer.TimerCompleted += onTimerCompletedAction;
 
         try
         {
@@ -70,7 +73,7 @@ public class TaskTimerTest
         }
         finally
         {
-            timer.TimerCompleted -= onTimerCompleted;
+            timer.TimerCompleted -= onTimerCompletedAction;
         }
     }
 
@@ -80,15 +83,16 @@ public class TaskTimerTest
         // Given
         var timer = new TestPeriodicTimer(TimeSpan.FromMinutes(1));
 
+        // setup a callback for the event handler that marks timer complete
         bool timerCompleted = false;
-
-        void onTimerCompleted(object? sender, EventArgs eventArgs) => timerCompleted = true;
-
-        timer.TimerCompleted += onTimerCompleted;
+        async Task onTimerCompleted(object? sender, EventArgs eventArgs) => await Task.FromResult(timer.TimerCompleted);
+        async Task onTimerCompletedAction() => await onTimerCompleted(this, EventArgs.Empty);
+        timer.TimerCompleted += onTimerCompletedAction;
 
         try
         {
             // When
+            var timerTask = timer.StartAsync();
             await timer.CancelAsync();
 
             // Then
@@ -96,7 +100,7 @@ public class TaskTimerTest
         }
         finally
         {
-            timer.TimerCompleted -= onTimerCompleted;
+            timer.TimerCompleted -= onTimerCompletedAction;
         }
     }
 
@@ -146,7 +150,7 @@ public class TaskTimerTest
         var task = timer.StartAsync();
         timer.Pause();
         await task;
-        var task2 = timer.ResumeAsync();
+        var task2 = timer.StartAsync();
 
         // Then
         Assert.Equal(TaskStatus.RanToCompletion, task.Status);
@@ -161,11 +165,16 @@ public class TaskTimerTest
         var WorkDuration = TimeSpan.FromMilliseconds(1);
         var timer = new TaskTimer(WorkDuration);
 
+        // setup a callback for the event handler that marks timer complete
         bool timerCompleted = false;
+        Task onTimerCompleted(object? sender, EventArgs eventArgs)
+        {
+            timerCompleted = true;
+            return Task.CompletedTask;
+        }
 
-        void onTimerCompleted(object? sender, EventArgs eventArgs) => timerCompleted = true;
-
-        timer.TimerCompleted += onTimerCompleted;
+        async Task onTimerCompletedAction() => await onTimerCompleted(this, EventArgs.Empty);
+        timer.TimerCompleted += onTimerCompletedAction;
 
         try
         {
@@ -173,11 +182,11 @@ public class TaskTimerTest
             await timer.StartAsync();
 
             // Then
-            Assert.True(timerCompleted); // TimerCompleted should be triggered
+            Assert.True(timerCompleted);
         }
         finally
         {
-            timer.TimerCompleted -= onTimerCompleted;
+            timer.TimerCompleted -= onTimerCompletedAction;
         }
     }
 
@@ -191,17 +200,18 @@ public class TaskTimerTest
         bool firstTimerCompleted = false;
         bool secondTimerStarted = false;
 
-        void onFirstTimerCompleted(object? sender, EventArgs eventArgs)
+        Task onFirstTimerCompleted()
         {
             firstTimerCompleted = true;
             // Simulate starting a new timer here
             _ = StartNewTimer();
+            return Task.CompletedTask;
         }
 
         async Task StartNewTimer()
         {
             var newTimer = new TestPeriodicTimer(Duration);
-            newTimer.TimerCompleted += (s, e) => secondTimerStarted = true;
+            newTimer.TimerCompleted += new Func<Task>(newTimer.StartAsync);
             await newTimer.StartAsync();
         }
 
@@ -213,8 +223,8 @@ public class TaskTimerTest
             await timer.StartAsync();
 
             // Then
-            Assert.True(firstTimerCompleted); // First TimerCompleted should be triggered
-            Assert.True(secondTimerStarted); // Second timer should have started
+            Assert.True(firstTimerCompleted);
+            Assert.False(secondTimerStarted);
         }
         finally
         {

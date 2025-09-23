@@ -6,7 +6,7 @@ namespace Eddy;
 /// The TaskTimer record type encapsulates the behavior of a work/break timer.
 /// After the initial work period, a break period is started.
 /// </summary>
-public record TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
+public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
 {
     private static readonly ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
     private readonly ILogger logger = factory.CreateLogger("TaskTimer");
@@ -16,13 +16,31 @@ public record TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
     public TimeSpan Period { get; set; } = InitialTimeSpan;
     private PeriodicTimer Timer = new(InitialTimeSpan);
 
-    /// <summary>
-    /// Event raised when the timer completes as expected (not cancelled).
-    /// </summary>
-    public event EventHandler TimerCompleted = null!;
+    private bool timerCompleted = false;
 
-    protected virtual void OnTimerCompleted(EventArgs e) {
-        TimerCompleted?.Invoke(this, e);
+    public Func<Task>? TimerCompleted
+    {
+        get => () => Task.FromResult(timerCompleted);
+        set
+        {
+            if (!_cts.IsCancellationRequested)
+            {
+                var task = value?.Invoke();
+
+                if (task != null && task.IsCompleted)
+                {
+                    timerCompleted = true;
+                }
+            }
+        }
+    }
+
+    protected virtual async Task OnTimerCompleted()
+    {
+        if (TimerCompleted != null)
+        {
+            await TimerCompleted();
+        }
     }
 
     /// <summary>
@@ -44,14 +62,12 @@ public record TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
     public async Task StartAsync()
     {
         LastEventTimeUtc = DateTimeOffset.UtcNow;
-        Timer = new PeriodicTimer(InitialTimeSpan);
-        Period = Timer.Period;
 
-        logger.LogInformation("Starting timer for {TimerPeriod} at {LastEventTimeUtc}.", Timer.Period, LastEventTimeUtc);
-
+        Timer.Dispose();
+        Timer = new(Period);
         await Timer.WaitForNextTickAsync(_cts.Token);
 
-        OnTimerCompleted(EventArgs.Empty);
+        await OnTimerCompleted();
     }
 
     public void Pause()
@@ -59,17 +75,20 @@ public record TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
         var elapsed = DateTimeOffset.UtcNow - LastEventTimeUtc;
         Period -= elapsed;
         LastEventTimeUtc = DateTimeOffset.UtcNow;
+
         Timer.Dispose();
     }
 
     public async Task ResumeAsync()
     {
-        if (Period > TimeSpan.Zero)
+        if (Period > TimeSpan.Zero && !_cts.IsCancellationRequested)
         {
             LastEventTimeUtc = DateTimeOffset.UtcNow;
             Timer = new PeriodicTimer(Period);
 
-            await Timer.WaitForNextTickAsync();
+            await Timer.WaitForNextTickAsync(_cts.Token);
+
+            await OnTimerCompleted();
         }
     }
 }
