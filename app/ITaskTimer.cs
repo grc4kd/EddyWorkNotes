@@ -7,5 +7,7 @@ public interface ITaskTimer
     void Pause();
     Task ResumeAsync();
     Task CancelAsync();
+
+    // Change TimerCompleted to use Func<Task>
     public Func<Task>? TimerCompleted { get; set; }
 }

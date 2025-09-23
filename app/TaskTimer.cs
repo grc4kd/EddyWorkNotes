@@ -16,14 +16,15 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
     public TimeSpan Period { get; set; } = InitialTimeSpan;
     private PeriodicTimer Timer = new(InitialTimeSpan);
 
-    /// <summary>
-    /// Event raised when the timer completes as expected (not cancelled).
-    /// </summary>
-    public event EventHandler? TimerCompleted;
+    // Change TimerCompleted to use Func<Task>
+    public Func<Task>? TimerCompleted { get; set; }
 
-    protected virtual void OnTimerCompleted(EventArgs e)
+    protected virtual async Task OnTimerCompleted()
     {
-        TimerCompleted?.Invoke(this, e);
+        if (TimerCompleted != null)
+        {
+            await TimerCompleted();
+        }
     }
 
     /// <summary>
@@ -46,14 +47,11 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
     {
         LastEventTimeUtc = DateTimeOffset.UtcNow;
 
-        logger.LogInformation("Starting timer for {Period} at {LastEventTimeUtc}.", Period, LastEventTimeUtc);
-
         Timer.Dispose();
         Timer = new(Period);
         await Timer.WaitForNextTickAsync(_cts.Token);
 
-        OnTimerCompleted(EventArgs.Empty);
-        TimerCompleted?.Invoke(this, EventArgs.Empty);
+        await OnTimerCompleted();
     }
 
     public void Pause()
@@ -61,8 +59,6 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
         var elapsed = DateTimeOffset.UtcNow - LastEventTimeUtc;
         Period -= elapsed;
         LastEventTimeUtc = DateTimeOffset.UtcNow;
-
-        logger.LogInformation("Pausing timer with {Period} remaining at {LastEventTimeUtc}.", Period, LastEventTimeUtc);
 
         Timer.Dispose();
     }
@@ -74,11 +70,9 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
             LastEventTimeUtc = DateTimeOffset.UtcNow;
             Timer = new PeriodicTimer(Period);
 
-            logger.LogInformation("Resuming timer for {Period} at {LastEventTimeUtc}.", Period, LastEventTimeUtc);
-
             await Timer.WaitForNextTickAsync(_cts.Token);
 
-            OnTimerCompleted(EventArgs.Empty);
+            await OnTimerCompleted();
         }
     }
 }
