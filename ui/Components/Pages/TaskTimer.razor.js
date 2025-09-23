@@ -42,15 +42,13 @@ export function pause() {
         intervalId = null;
         isRunning = false;
     }
+}
 
 export function run(durationSeconds) {
     // stop any running timers that were already running
     stop();
 
-    // the first timer update is immediate
-    updateDisplay(durationSeconds);
-
-    // set interval timer to tick at regular rate
+    isRunning = true;
     remainingTimeSeconds = durationSeconds;
     intervalId = setInterval(tick, INTERVAL_DELAY_MS);
 }

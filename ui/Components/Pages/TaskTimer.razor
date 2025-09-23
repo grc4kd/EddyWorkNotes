@@ -23,21 +23,21 @@
             <p>Status: @State.TimerStatus</p>
         </div>
 
-        <p>Current Phase: @CurrentPhase</p>
-        <p>Status: @CurrentState</p>
+        <button @onclick="StartTimerCycleAsync" class="btn btn-primary me-2">Start</button>
+        <button @onclick="TogglePauseResumeAsync" class="btn btn-warning">@TogglePauseResumeText</button>
     </div>
 
     <button @onclick="StartTimer" class="btn btn-primary m-2">Start</button>
 </div>
 
 @code {
-    private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(1);
-    private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(25);
+    private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(5);
 
-    public TimeSpan TimeRemaining { get; private set; } = WorkTimeSpan;
+    private ITaskTimer? _taskTimer = new Eddy.TaskTimer(WorkTimeSpan);
+    public TaskTimerState State { get; private set; } = new("Stopped");
     public string CurrentPhase { get; private set; } = "Work";
-    public TaskTimerState CurrentState { get; private set; } = new(TaskTimerStateValue.Stopped);
-    private string TogglePauseResumeText => CurrentState.IsPaused ? "Resume" : "Pause";
+    private string TogglePauseResumeText => State.TimerStatus == "Paused" ? "Resume" : "Pause";
 
     private IJSObjectReference? module;
 
@@ -50,6 +50,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        ArgumentNullException.ThrowIfNull(_taskTimer);
+
         if (module is not null)
         {
             try
@@ -63,9 +65,10 @@
         }
     }
 
-    public async Task StartTimer()
+    private async Task TogglePauseResumeAsync()
     {
-        elapsedCount = 0;
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(_taskTimer);
 
         if (State.TimerStatus == "Paused" && _taskTimer.Period > TimeSpan.Zero)
         {

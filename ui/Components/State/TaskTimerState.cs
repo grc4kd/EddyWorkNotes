@@ -1,14 +1,33 @@
+using System.Text;
+
 namespace ui.Components.State;
 
-public record TaskTimerState(string TimerStatus)
+public record TaskTimerState
 {
-    public bool IsStopped => TimerStatus == TaskTimerStateValue.Stopped;
-    public bool IsRunning => TimerStatus == TaskTimerStateValue.Running;
-    public bool IsPaused => TimerStatus == TaskTimerStateValue.Paused;
+    private static readonly Dictionary<string, string> ValidStates = [];
+    private string timerStatus = ValidStates.FirstOrDefault().Value;
 
-    public static readonly TaskTimerState Stopped = new(TaskTimerStateValue.Stopped);
-    public static readonly TaskTimerState Running = new(TaskTimerStateValue.Running);
-    public static readonly TaskTimerState Paused = new(TaskTimerStateValue.Paused);
+    /// <summary>
+    /// A simple check for input strings against a dictionary of indexed values.
+    /// </summary>
+    /// <param name="inputStr">Case-sensitive input string to be validated.</param>
+    /// <returns>true if input string is valid; false otherwise.</returns>
+    public static bool ValidateString(string inputStr) => ValidStates.ContainsValue(inputStr);
+    public string TimerStatus
+    {
+        get => timerStatus;
+        init
+        {
+            timerStatus = ValidateString(value)
+                ? ValidateString(value) ? value : ValidStates.First().Value
+                : throw new ArgumentOutOfRangeException(nameof(value),
+                    $"Expected {value} to be in range of expected states: [{PrintValidStates}]");
+        }
+    }
+    static TaskTimerState()
+    {
+        LoadValidStates();
+    }
 
     public TaskTimerState(string status) => TimerStatus = status;
 

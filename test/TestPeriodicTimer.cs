@@ -1,6 +1,7 @@
+using Eddy;
 namespace test;
 
-public class TestPeriodicTimer(TimeSpan period)
+public class TestPeriodicTimer(TimeSpan period) : ITaskTimer
 {
     private readonly CancellationTokenSource _cts = new();
     public TimeSpan Period { get; } = period;

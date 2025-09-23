@@ -48,18 +48,10 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
     /// </summary>
     public async Task CancelAsync()
     {
-        _cts.Cancel();
-        OnTimerCompleted(EventArgs.Empty);
-    }
-
-    public virtual void OnTimeElapsed(EventArgs e)
-    {
-        TimeElapsed?.Invoke(this, e);
-    }
-
-    public virtual void OnTimerCompleted(EventArgs e)
-    {
-        TimerCompleted?.Invoke(this, e);
+        if (_cts.Token.CanBeCanceled)
+        {
+            await _cts.CancelAsync();
+        }
     }
 
     /// <summary>
@@ -94,17 +86,7 @@ public class TaskTimer(TimeSpan InitialTimeSpan) : ITaskTimer
             LastEventTimeUtc = DateTimeOffset.UtcNow;
             Timer = new PeriodicTimer(Period);
 
-        // stop and complete the timer after break is over
-        IsRunning = IsWorkTime;
-
-        try
-        {
-            await _timer.WaitForNextTickAsync(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            TimerCompleted?.Invoke(this, EventArgs.Empty);
-        }
+            await Timer.WaitForNextTickAsync(_cts.Token);
 
             await OnTimerCompleted();
         }
