@@ -1,10 +1,13 @@
 using ui.Components;
+using Eddy;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddScoped<NotifierService>();
+builder.Services.AddScoped<TaskTimerService>();
 
 var app = builder.Build();
 
