@@ -16,12 +16,14 @@
         <h3 class="card-title">Pomodoro Timer</h3>
 
         <div class="mb-3">
-            <p>Time Remaining <span id='timerDisplay' class="float-end">@TimeRemaining</span></p>
-            <p>Current Phase: @CurrentPhase</p>
-            <p>Status: @CurrentState</p>
+            <div class="mb-3" asp-for="timeRemaining">
+                Time Remaining
+                <div id='timerDisplay' class="mb-6 float-end">@TimeRemaining</div>
+            </div>
         </div>
 
-        <button @onclick="StartTimer" class="btn btn-primary me-2">Start</button>
+        <p>Current Phase: @CurrentPhase</p>
+        <p>Status: @CurrentState</p>
     </div>
 
     <button @onclick="StartTimer" class="btn btn-primary m-2">Start</button>
@@ -102,7 +104,7 @@
             module?.InvokeVoidAsync("run", BreakTimeSpan.TotalSeconds);
             await taskTimerService.StartAsync(BreakTimeSpan);
         }
-        
+
         TimeRemaining = TimeSpan.Zero;
         CurrentState = TaskTimerState.Stopped;
         CurrentPhase = $"Stopped after {elapsedCount} cycles.";

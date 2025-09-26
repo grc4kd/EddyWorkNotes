@@ -35,17 +35,18 @@ function tick() {
     }
 }
 
-export function pause() {
-    if (intervalId && isRunning) {
+export function stop() {
+    if (intervalId){
         clearInterval(intervalId);
-        intervalId = null;
-        isRunning = false;
     }
+
+    intervalId = null;
+    isRunning = false;
 }
 
 export function run(durationSeconds) {
     // stop any other timers and run this new timer by itself
-    stop();
+    stop()
 
     // the first timer update is immediate
     updateDisplay(durationSeconds);
@@ -54,12 +55,4 @@ export function run(durationSeconds) {
     remainingTimeSeconds = durationSeconds;
     isRunning = true;
     intervalId = setInterval(tick, INTERVAL_DELAY_MS);
-}
-
-function stop() {
-    if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-    }
-    isRunning = false;
 }

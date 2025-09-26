@@ -1,4 +1,3 @@
-using Eddy;
 namespace test;
 
 public class TestPeriodicTimer(TimeSpan period)
