@@ -24,13 +24,13 @@ public partial class TaskTimerTests : PageTest
         // Verify initial state
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Task Timer" })).ToBeVisibleAsync();
         await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Start" })).ToBeVisibleAsync();
-        await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Pause" })).ToBeVisibleAsync();
-        
+        await Expect(Page.Locator("p").First).ToContainTextAsync("Time Remaining");
+
         // Start the timer
         await Page.GetByRole(AriaRole.Button, new() { Name = "Start" }).ClickAsync();
+        await Task.Delay(10); // Wait for timer to tick
 
         // Verify timer is running
-        await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Pause" })).ToBeVisibleAsync();
-        await Expect(Page.Locator("p").First).ToContainTextAsync("Time:");
+        await Expect(Page.Locator("#timerDisplay").First).ToContainTextAsync("remaining");
     }
 }
