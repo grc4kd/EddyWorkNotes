@@ -90,12 +90,16 @@
             CurrentPhase = "Work";
             StateHasChanged();
 
+            // start a javascript timer on the client
+            module?.InvokeVoidAsync("run", WorkTimeSpan.TotalSeconds);
+            // then, call and wait for the periodic timer on the server
             await taskTimerService.StartAsync(WorkTimeSpan);
 
             TimeRemaining = BreakTimeSpan;
             CurrentPhase = "Break";
             StateHasChanged();
 
+            module?.InvokeVoidAsync("run", BreakTimeSpan.TotalSeconds);
             await taskTimerService.StartAsync(BreakTimeSpan);
         }
         
