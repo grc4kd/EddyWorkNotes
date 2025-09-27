@@ -1,24 +1,31 @@
 const INTERVAL_DELAY_MS = 1000;
+const elementId = 'timerDisplay';
 
 let intervalId = null;
 let remainingTimeSeconds = 0;
 let isRunning = false;
 
-// Format total seconds into whole minutes and seconds in MM:SS format
-export function formatTime(totalSeconds) {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = Math.floor(totalSeconds % 60);
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+function init() {
+    intervalId = null;
+    remainingTimeSeconds = 0;
+    isRunning = false;
+    updateDisplay(0);
 }
 
-function updateDisplay(totalSeconds) {
-    const elementId = 'timerDisplay';
+function updateDisplay(totalSeconds) {    
     const display = document.getElementById(elementId);
     if (display) {
         display.textContent = `${formatTime(totalSeconds)} remaining`;
     } else {
         console.error(`Element with id ${elementId} not found.`);
     }
+}
+
+// Format total seconds into whole minutes and seconds in MM:SS format
+export function formatTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 function tick() {
@@ -29,9 +36,9 @@ function tick() {
     updateDisplay(remainingTimeSeconds);
 
     // stop at 1 second left on the clock (next tick updates to 0)
-    if (remainingTimeSeconds <= 1) {
-        remainingTimeSeconds = 1;
+    if (remainingTimeSeconds <= 0) {
         stop();
+        init();
     }
 }
 
@@ -39,9 +46,6 @@ export function stop() {
     if (intervalId){
         clearInterval(intervalId);
     }
-
-    intervalId = null;
-    isRunning = false;
 }
 
 export function run(durationSeconds) {

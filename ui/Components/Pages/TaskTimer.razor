@@ -27,9 +27,36 @@
     </div>
 
     <button @onclick="StartTimer" class="btn btn-primary m-2">Start</button>
+
+    <h4 class="mt-4">Completed Cycles</h4>
+
+    @if (completedSessions.Any())
+    {
+        <div class="d-flex flex-column-reverse">
+            @foreach (var session in completedSessions)
+            {
+                <div class="card my-2" style="width: 400px;">
+                    <div class="card-body">
+                        <h5 class="card-title">@session.Message</h5>
+                        <p class="card-text">Duration: @session.Period.ToString(@"mm\:ss")</p>
+                        <p class="card-text"><small class="text-muted">Finished at
+                                @session.CompletedAt.ToShortTimeString()</small></p>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p>No cycles completed yet.</p>
+    }
 </div>
 
 @code {
+    // work and break cycles counted twice
+    // skip the last break cycle (-1)
+    private const int cycleCount = 4;
+    private static int totalCycleCount => (2 * cycleCount) - 1;
     private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(25);
     private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(5);
 
@@ -37,6 +64,7 @@
     public string CurrentPhase { get; set; } = string.Empty;
     public TaskTimerState CurrentState { get; private set; } = new(TaskTimerStateValue.Stopped);
     private string TogglePauseResumeText => CurrentState.IsPaused ? "Resume" : "Pause";
+    private List<TimerSession> completedSessions = new();
 
     private IJSObjectReference? module;
     private int elapsedCount = 0;
@@ -81,10 +109,6 @@
     {
         elapsedCount = 0;
 
-        // work and break cycles counted twice
-        var cycleCount = 4;
-        var totalCycleCount = cycleCount * 2;
-
         CurrentPhase = "Work";
         CurrentState = TaskTimerState.Running;
 
@@ -97,14 +121,37 @@
             // start a javascript timer on the client
             module?.InvokeVoidAsync("run", WorkTimeSpan.TotalSeconds);
             // then, call and wait for the periodic timer on the server
-            await taskTimerService.StartAsync(WorkTimeSpan);
+            try
+            {
+                await taskTimerService.StartAsync(WorkTimeSpan);
+            }
+            catch (OperationCanceledException ex)
+            {
+                if (ex.CancellationToken.IsCancellationRequested)
+                {
+                    // stop cancelled timers on the client
+                    module?.InvokeVoidAsync("stop");
+                    // update page state
+                    TimeRemaining = TimeSpan.Zero;
+                    CurrentState = TaskTimerState.Stopped;
+                }
+            }
+            finally
+            {
+                // add all sessions, including cancelled timers, to the list of completed sessions
+                completedSessions.Add(new TimerSession("Work", WorkTimeSpan, DateTime.Now));
+                StateHasChanged();
+            }
 
-            TimeRemaining = BreakTimeSpan;
-            CurrentPhase = "Break";
-            StateHasChanged();
+            // skip the last break time (long break after span of work)
+            if (elapsedCount < totalCycleCount) {
+                TimeRemaining = BreakTimeSpan;
+                CurrentPhase = "Break";
+                StateHasChanged();
 
-            module?.InvokeVoidAsync("run", BreakTimeSpan.TotalSeconds);
-            await taskTimerService.StartAsync(BreakTimeSpan);
+                module?.InvokeVoidAsync("run", BreakTimeSpan.TotalSeconds);
+                await taskTimerService.StartAsync(BreakTimeSpan);
+            }
         }
 
         TimeRemaining = TimeSpan.Zero;

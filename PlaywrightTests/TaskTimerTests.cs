@@ -43,7 +43,6 @@ public partial class TaskTimerTests : PageTest
 
         // Start the timer
         await Page.GetByRole(AriaRole.Button, new() { Name = "Start" }).ClickAsync();
-        await Task.Delay(clickDelayTime); // Wait for timer to tick
 
         // Verify timer is running
         await Expect(Page.Locator("#timerDisplay").First).ToContainTextAsync("remaining");
