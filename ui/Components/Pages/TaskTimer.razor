@@ -33,8 +33,8 @@
     private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(25);
     private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(5);
 
-    public TimeSpan TimeRemaining { get; private set; } = WorkTimeSpan;
-    public string CurrentPhase { get; private set; } = "Work";
+    public TimeSpan TimeRemaining { get; private set; }
+    public string CurrentPhase { get; set; } = string.Empty;
     public TaskTimerState CurrentState { get; private set; } = new(TaskTimerStateValue.Stopped);
     private string TogglePauseResumeText => CurrentState.IsPaused ? "Resume" : "Pause";
 
@@ -45,6 +45,7 @@
     {
         if (firstRender && module is null)
         {
+            CurrentPhase = "Work";
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
         }
 
@@ -84,6 +85,7 @@
         var cycleCount = 4;
         var totalCycleCount = cycleCount * 2;
 
+        CurrentPhase = "Work";
         CurrentState = TaskTimerState.Running;
 
         while (elapsedCount < totalCycleCount)
