@@ -1,5 +1,6 @@
 @page "/tasktimer"
 @using System.Threading.Tasks
+@using System.Reflection
 @using ui.Components.Models
 @rendermode InteractiveServer
 @implements IAsyncDisposable
@@ -27,16 +28,21 @@
     </div>
 
     <div class="card-body container-sm">
-        <h3>Active Data</h3>
         <div class="container-sm">
-            <h4>Work Notes</h4>
             <EditForm Model="Model" OnValidSubmit="Submit" FormName="WorkNotes">
                 <DataAnnotationsValidator />
                 <ValidationSummary />
 
                 <div class="row">
                     <label>
-                        (cycle [@currentCycleCount of @cycleCount])
+                        @if (CurrentState.IsRunning && CurrentPhase == "Work")
+                        {
+                            <p>Note (cycle @(CurrentWorkCycle + 1) of @WorkCycles)</p>
+                        }
+                        else
+                        {
+                            <p><u>work timer off</u></p>
+                        }
                         <div class="row">
                             <InputTextArea @bind-Value="Model!.Description" />
                         </div>
@@ -48,7 +54,7 @@
             </EditForm>
         </div>
         <div class="card-body container-sm">
-            <h3 class="mb-3">Completed Cycles</h3>
+            <h3 class="mb-3">History</h3>
             @if (completedSessions.Any())
             {
                 <div class="d-flex flex-column">
@@ -56,9 +62,7 @@
                     {
                         <div class="card my-2">
                             <div class="card-body">
-                                <h5 class="card-title">@session.Message</h5>
-                                <p class="card-text">Duration: @session.Period.ToString(@"mm\:ss")</p>
-                                <p class="card-text"><small class="text-muted">Finished at
+                                <p class="card-text"><small class="text-muted">Recorded at
                                         @session.CompletedAt.ToShortTimeString()</small></p>
                                 <p class="card-text">@session.WorkNotes</p>
                             </div>
@@ -78,32 +82,35 @@
     <div id="liveToast" class="toast @HideToast" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-header">
             <strong class="me-auto">Task Timer</strong>
-            <small>@DateTime.Now</small>
+            <small>Cycle complete: @LastCycleCompletedAt</small>
             <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
         <div class="toast-body">
-            On a short break. Be back around @(DateTime.Now.Add(settings.BreakTimeSpan))!
+            On a short break for <em>@(options.BreakTimeSpan.TotalMinutes)</em> minutes. Be right back!
         </div>
     </div>
 </div>
 
 @code {
-    // 4 work and 4 break cycles counted twice
-    private const int cycleCount = 4;
+    // Razor Page constant variables
+    private const int WorkCycles = 4;
 
-    private TaskTimerSettings settings = new();
-
+    // DTOs and model class reference types
     public TimeSpan TimeRemaining { get; private set; }
-    public TaskTimerState CurrentState { get; private set; } = new(TaskTimerStateValue.Stopped);
-
+    public TaskTimerState CurrentState { get; private set; } = TaskTimerState.Stopped;
+    private TaskTimerOptions options = new();
     private IEnumerable<TimerSession> completedSessions = [];
     private IJSObjectReference? module;
+
+    // primitive type state variables
     public string CurrentPhase { get; set; } = "";
-    private string TogglePauseResumeText => CurrentState.IsPaused ? "Resume" : "Pause";
-    private int elapsedCount = 0;
-    private int currentCycleCount => 1 + (elapsedCount / 2);
+    public string LastCycleCompletedAt => completedSessions.Any() ? completedSessions.Last().CompletedAt.ToLongTimeString()
+    : "(no time recorded)";
+    private int Elapsed = 0;
+    private int CurrentWorkCycle = 0;
     private string HideToast => CurrentPhase == "Break" ? "show" : "hide";
 
+    // EditForm variables
     [SupplyParameterFromForm]
     private WorkNotes? Model { get; set; }
 
@@ -122,23 +129,29 @@
         {
             Func<string, int, Task>? subscriber = async (a, b) =>
             {
-                elapsedCount++;
-                await Task.FromResult($"elapsedCount: {elapsedCount}, notifierStringA: {a}, notifierIntB: {b}");
+                Elapsed++;
+                await Task.CompletedTask;
             };
 
             notifierService.Notify += subscriber;
         }
     }
 
+    /// <summary>
+    /// Process form submission and update completed work notes. Do not submit empty notes or duplicate notes.
+    /// Trim notes before comparison, but submit all data previously validated in the EditForm.
+    /// </summary>
     private void Submit()
     {
-        // do not submit empty notes
-        // do not submit duplicate notes
-        if (!string.IsNullOrWhiteSpace(Model?.Description)
-        && completedSessions.All(s => s.WorkNotes?.Trim() != Model?.Description.Trim()))
+        static string trimNotes(WorkNotes notes) => (notes != null && !string.IsNullOrWhiteSpace(notes.Description)) ?
+        notes!.Description!.Trim() : string.Empty;
+
+        bool isInputBlank = (Model == null || string.IsNullOrWhiteSpace(Model?.Description));
+
+        if (Model != null && !isInputBlank && completedSessions.All(s => s.WorkNotes?.Trim() != trimNotes(Model)))
         {
             Logger.LogInformation("Work notes submitted. Description = {Description}", Model!.Description);
-            completedSessions = completedSessions.Prepend(new TimerSession("Work", settings.WorkTimeSpan, DateTime.Now,
+            completedSessions = completedSessions.Prepend(new TimerSession("Work", options.WorkTimeSpan, DateTime.Now,
             Model!.Description));
             Model!.Description = "";
         }
@@ -155,45 +168,46 @@
             catch (JSDisconnectedException)
             {
                 // Handle exceptions if client JS module is disconnected
+                Logger.LogWarning("JavaScript module disconnected, EditForm Model state: {Model}", Model);
             }
         }
     }
 
     public async Task StartTimer()
     {
-        elapsedCount = 0;
+        Elapsed = 0;
 
         CurrentPhase = "Work";
         CurrentState = TaskTimerState.Running;
         StateHasChanged();
 
-        while (currentCycleCount < cycleCount)
+        while (CurrentWorkCycle < WorkCycles)
         {
-            // skip the first break time, stop loop after last work cycle
-            if (CurrentPhase == "Break")
+            await HandleCycleAsync(options.WorkTimeSpan, "Work");
+            CurrentWorkCycle++;
+
+            // if all but the last break cycle have raised elapsed events, skip the last break timer
+            if (CurrentWorkCycle < WorkCycles)
             {
-                module?.InvokeVoidAsync("run", settings.BreakTimeSpan.TotalSeconds);
-                await taskTimerService.StartAsync(settings.BreakTimeSpan);
+                await HandleCycleAsync(options.BreakTimeSpan, "Break");
             }
-
-            TimeRemaining = settings.WorkTimeSpan;
-            CurrentPhase = "Work";
-            StateHasChanged();
-
-            // start a javascript timer on the client
-            module?.InvokeVoidAsync("run", settings.WorkTimeSpan.TotalSeconds);
-            // then, call and wait for the periodic timer on the server
-            await taskTimerService.StartAsync(settings.WorkTimeSpan);
-
-            // setup break time before next loop iteration
-            TimeRemaining = settings.BreakTimeSpan;
-            CurrentPhase = "Break";
-            StateHasChanged();
         }
 
         TimeRemaining = TimeSpan.Zero;
         CurrentState = TaskTimerState.Stopped;
-        CurrentPhase = $"Stopped after {currentCycleCount} cycles.";
+        CurrentPhase = $"Stopped after {CurrentWorkCycle} cycles.";
         StateHasChanged();
+    }
+
+    private async Task HandleCycleAsync(TimeSpan timeRemaining, string phase)
+    {
+        ArgumentOutOfRangeException.ThrowIfNullOrWhiteSpace(phase);
+
+        TimeRemaining = timeRemaining;
+        CurrentPhase = phase;
+        StateHasChanged();
+
+        module?.InvokeVoidAsync("run", TimeRemaining.TotalSeconds);
+        await taskTimerService.StartAsync(TimeRemaining);
     }
 }

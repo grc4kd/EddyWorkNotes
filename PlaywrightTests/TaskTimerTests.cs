@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Microsoft.Playwright.MSTest;
 
@@ -46,5 +47,9 @@ public partial class TaskTimerTests : PageTest
 
         // Verify timer is running
         await Expect(Page.Locator("#timerDisplay").First).ToContainTextAsync("remaining");
+        await Expect(Page.Locator("#timerDisplay").First).ToHaveTextAsync(MatchClockRegex());
     }
+
+    [GeneratedRegex(@"\d\d:\d\d")]
+    private static partial Regex MatchClockRegex();
 }
