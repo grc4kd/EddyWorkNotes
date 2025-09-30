@@ -15,7 +15,6 @@
 <div class="card container-md">
     <div class="card-body container-sm">
         <h3 class="card-title">Active Timer</h3>
-
         <div class="mb-2">
             <div class="mb-2" asp-for="timeRemaining">
                 Time Remaining
@@ -24,104 +23,91 @@
         </div>
         <p>Current Phase: @CurrentPhase</p>
         <p>Status: @CurrentState</p>
-        <button @onclick="StartTimer" class="btn btn-primary">Start</button>
+        <button @onclick="StartTimer" class="btn btn-primary" disabled="@CurrentState.IsRunning">Start</button>
     </div>
 
     <div class="card-body container-sm">
         <h3>Active Data</h3>
-        @if (CurrentState == TaskTimerState.Running && CurrentPhase == "Work")
-        {
-            <div class="container-sm">
-                <h4>Work Notes</h4>
-                <EditForm Model="Model" OnValidSubmit="Submit" FormName="WorkNotes" >
-                    <DataAnnotationsValidator />
-                    <ValidationSummary />
-                    
-                    <div class="row">
-                        <label>
-                            (cycle [@(elapsedCount+1)/@totalCycleCount])
-                            <div class="row">
-                                <InputTextArea @bind-Value="Model!.Description" />
-                            </div>
-                        </label>
-                        <div class="pt-4">
-                            <button type="submit" class="btn btn-primary">Submit</button>
-                        </div>
-                    </div>
-                </EditForm>
-            </div>
-        }
-        else
-        {
-            <div class="container-sm">
-                <p>Not recording <u>Work Notes</u> right now.
-                    @if (CurrentPhase == "Break")
-                    {
-                        <span><em>On Break</em></span>
-                    }
-                </p>
-            </div>
-        }
-    </div>
+        <div class="container-sm">
+            <h4>Work Notes</h4>
+            <EditForm Model="Model" OnValidSubmit="Submit" FormName="WorkNotes">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
 
-    <div class="card-body container-sm">
-        <h3 class="mb-3">Completed Cycles</h3>
-        @if (completedSessions.Any())
-        {
-            <div class="d-flex flex-column">
-                @foreach (var session in completedSessions)
-                {
-                    <div class="card my-2">
-                        <div class="card-body">
-                            <h5 class="card-title">@session.Message</h5>
-                            <p class="card-text">Duration: @session.Period.ToString(@"mm\:ss")</p>
-                            <p class="card-text"><small class="text-muted">Finished at
-                                    @session.CompletedAt.ToShortTimeString()</small></p>
-                            <p class="card-text">@session.WorkNotes</p>
+                <div class="row">
+                    <label>
+                        (cycle [@currentCycleCount of @cycleCount])
+                        <div class="row">
+                            <InputTextArea @bind-Value="Model!.Description" />
                         </div>
+                    </label>
+                    <div class="pt-4">
+                        <button type="submit" class="btn btn-primary">Save</button>
                     </div>
-                }
-            </div>
-        }
-        else
-        {
-            <p>No cycles completed yet.</p>
-        }
+                </div>
+            </EditForm>
+        </div>
+        <div class="card-body container-sm">
+            <h3 class="mb-3">Completed Cycles</h3>
+            @if (completedSessions.Any())
+            {
+                <div class="d-flex flex-column">
+                    @foreach (var session in completedSessions)
+                    {
+                        <div class="card my-2">
+                            <div class="card-body">
+                                <h5 class="card-title">@session.Message</h5>
+                                <p class="card-text">Duration: @session.Period.ToString(@"mm\:ss")</p>
+                                <p class="card-text"><small class="text-muted">Finished at
+                                        @session.CompletedAt.ToShortTimeString()</small></p>
+                                <p class="card-text">@session.WorkNotes</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <p>No cycles completed yet.</p>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="liveToast" class="toast @HideToast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Task Timer</strong>
+            <small>@DateTime.Now</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            On a short break. Be back around @(DateTime.Now.Add(settings.BreakTimeSpan))!
+        </div>
     </div>
 </div>
 
 @code {
-    // work and break cycles counted twice
-    // skip the last break cycle (-1)
+    // 4 work and 4 break cycles counted twice
     private const int cycleCount = 4;
-    private static int totalCycleCount => (2 * cycleCount) - 1;
-    private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromMinutes(25);
-    private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromMinutes(5);
+
+    private TaskTimerSettings settings = new();
 
     public TimeSpan TimeRemaining { get; private set; }
-    public string CurrentPhase { get; set; } = string.Empty;
     public TaskTimerState CurrentState { get; private set; } = new(TaskTimerStateValue.Stopped);
-    private string TogglePauseResumeText => CurrentState.IsPaused ? "Resume" : "Pause";
-    private List<TimerSession> completedSessions = new();
 
+    private IEnumerable<TimerSession> completedSessions = [];
     private IJSObjectReference? module;
+    public string CurrentPhase { get; set; } = "";
+    private string TogglePauseResumeText => CurrentState.IsPaused ? "Resume" : "Pause";
     private int elapsedCount = 0;
+    private int currentCycleCount => 1 + (elapsedCount / 2);
+    private string HideToast => CurrentPhase == "Break" ? "show" : "hide";
 
     [SupplyParameterFromForm]
     private WorkNotes? Model { get; set; }
 
-    protected override void OnInitialized() =>
-    Model ??= new() { Description = string.Empty };
-
-    private void Submit()
-    {
-        Logger.LogInformation("Work notes submitted. Description = {Description}", Model?.Description);
-    }
-
-    private void Store()
-    {
-        completedSessions.Add(new TimerSession("Work", WorkTimeSpan, DateTime.Now, Model?.Description));
-    }
+    protected override void OnInitialized() => Model ??= new();
 
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
@@ -129,18 +115,32 @@
         {
             CurrentPhase = "Work";
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
+            Model = new WorkNotes();
         }
 
         if (firstRender && notifierService is not null)
         {
-            Func<string, int, Task>? subscriber = (a, b) =>
+            Func<string, int, Task>? subscriber = async (a, b) =>
             {
                 elapsedCount++;
-
-                return Task.FromResult(elapsedCount);
+                await Task.FromResult($"elapsedCount: {elapsedCount}, notifierStringA: {a}, notifierIntB: {b}");
             };
 
             notifierService.Notify += subscriber;
+        }
+    }
+
+    private void Submit()
+    {
+        // do not submit empty notes
+        // do not submit duplicate notes
+        if (!string.IsNullOrWhiteSpace(Model?.Description)
+        && completedSessions.All(s => s.WorkNotes?.Trim() != Model?.Description.Trim()))
+        {
+            Logger.LogInformation("Work notes submitted. Description = {Description}", Model!.Description);
+            completedSessions = completedSessions.Prepend(new TimerSession("Work", settings.WorkTimeSpan, DateTime.Now,
+            Model!.Description));
+            Model!.Description = "";
         }
     }
 
@@ -165,55 +165,35 @@
 
         CurrentPhase = "Work";
         CurrentState = TaskTimerState.Running;
+        StateHasChanged();
 
-        while (elapsedCount < totalCycleCount)
+        while (currentCycleCount < cycleCount)
         {
-            TimeRemaining = WorkTimeSpan;
+            // skip the first break time, stop loop after last work cycle
+            if (CurrentPhase == "Break")
+            {
+                module?.InvokeVoidAsync("run", settings.BreakTimeSpan.TotalSeconds);
+                await taskTimerService.StartAsync(settings.BreakTimeSpan);
+            }
+
+            TimeRemaining = settings.WorkTimeSpan;
             CurrentPhase = "Work";
             StateHasChanged();
 
             // start a javascript timer on the client
-            module?.InvokeVoidAsync("run", WorkTimeSpan.TotalSeconds);
+            module?.InvokeVoidAsync("run", settings.WorkTimeSpan.TotalSeconds);
             // then, call and wait for the periodic timer on the server
-            try
-            {
-                await taskTimerService.StartAsync(WorkTimeSpan);
-            }
-            catch (OperationCanceledException ex)
-            {
-                if (ex.CancellationToken.IsCancellationRequested)
-                {
-                    // stop cancelled timers on the client
-                    module?.InvokeVoidAsync("stop");
-                    // update page state
-                    TimeRemaining = TimeSpan.Zero;
-                    CurrentState = TaskTimerState.Stopped;
-                }
-            }
+            await taskTimerService.StartAsync(settings.WorkTimeSpan);
+
+            // setup break time before next loop iteration
+            TimeRemaining = settings.BreakTimeSpan;
+            CurrentPhase = "Break";
             StateHasChanged();
-
-            // add all sessions, including cancelled timers, to the list of completed sessions
-            Store();
-
-            if (Model is not null) {
-                Model.Description = string.Empty;
-            }
-
-            // skip the last break time (long break after span of work)
-            if (elapsedCount < totalCycleCount)
-            {
-                TimeRemaining = BreakTimeSpan;
-                CurrentPhase = "Break";
-                StateHasChanged();
-
-                module?.InvokeVoidAsync("run", BreakTimeSpan.TotalSeconds);
-                await taskTimerService.StartAsync(BreakTimeSpan);
-            }
         }
 
         TimeRemaining = TimeSpan.Zero;
         CurrentState = TaskTimerState.Stopped;
-        CurrentPhase = $"Stopped after {elapsedCount} cycles.";
+        CurrentPhase = $"Stopped after {currentCycleCount} cycles.";
         StateHasChanged();
     }
 }

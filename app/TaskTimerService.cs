@@ -13,22 +13,19 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
     {
         using var timer = new PeriodicTimer(Period);
 
-        var time1 = DateTime.Now;
-        var end = time1 + Period;
+        var startTime = DateTime.Now;
+        var endTime = startTime + Period;
 
-        logger.LogInformation("Starting task timer at local time: {t1}.", time1);
+        logger.LogInformation("Starting task timer at local time: {t1}, ending at time: {t2}.", startTime, endTime);
 
-        while (DateTime.Now < end && !cancellationTokenSource.IsCancellationRequested)
+        while (DateTime.Now < endTime && !cancellationTokenSource.IsCancellationRequested)
         {
-            logger.LogInformation("Tick at {now}", DateTime.Now);
             await timer.WaitForNextTickAsync(cancellationTokenSource.Token);
+            logger.LogInformation("Done waiting for next tick on task timer at {now}", DateTime.Now);
         }
 
         elapsedCount++;
         await notifier.Update("elapsedCount", elapsedCount);
-
-        var time2 = DateTime.Now;
-        logger.LogInformation("Task timer elapsed at local time: {localtime}.", time2);
     }
 
     public void Cancel() => cancellationTokenSource.Cancel();
