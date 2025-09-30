@@ -91,7 +91,7 @@
     // 4 work and 4 break cycles counted twice
     private const int cycleCount = 4;
 
-    private TaskTimerSettings settings = new TaskTimerSettings(TimeSpan.FromMinutes(25), TimeSpan.FromMinutes(5));
+    private TaskTimerSettings settings = new();
 
     public TimeSpan TimeRemaining { get; private set; }
     public TaskTimerState CurrentState { get; private set; } = new(TaskTimerStateValue.Stopped);
