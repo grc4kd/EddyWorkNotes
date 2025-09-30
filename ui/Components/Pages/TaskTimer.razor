@@ -183,14 +183,8 @@
 
         while (CurrentWorkCycle < WorkCycles)
         {
-            await HandleCycleAsync(options.WorkTimeSpan, "Work");
-            CurrentWorkCycle++;
-
-            // if all but the last break cycle have raised elapsed events, skip the last break timer
-            if (CurrentWorkCycle < WorkCycles)
-            {
-                await HandleCycleAsync(options.BreakTimeSpan, "Break");
-            }
+            await HandleBreakCycleAsync();
+            await HandleWorkCycleAsync();
         }
 
         TimeRemaining = TimeSpan.Zero;
@@ -199,15 +193,22 @@
         StateHasChanged();
     }
 
-    private async Task HandleCycleAsync(TimeSpan timeRemaining, string phase)
+    private async Task HandleWorkCycleAsync()
     {
-        ArgumentOutOfRangeException.ThrowIfNullOrWhiteSpace(phase);
-
-        TimeRemaining = timeRemaining;
-        CurrentPhase = phase;
+        TimeRemaining = settings.WorkTimeSpan;
+        CurrentPhase = "Work";
         StateHasChanged();
 
-        module?.InvokeVoidAsync("run", TimeRemaining.TotalSeconds);
-        await taskTimerService.StartAsync(TimeRemaining);
+        module?.InvokeVoidAsync("run", settings.WorkTimeSpan.TotalSeconds);
+        await taskTimerService.StartAsync(settings.WorkTimeSpan);
+    }
+
+    private async Task HandleBreakCycleAsync()
+    {
+        if (CurrentPhase == "Break")
+        {
+            module?.InvokeVoidAsync("run", settings.BreakTimeSpan.TotalSeconds);
+            await taskTimerService.StartAsync(settings.BreakTimeSpan);
+        }
     }
 }
