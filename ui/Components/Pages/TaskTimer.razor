@@ -82,7 +82,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
         <div class="toast-body">
-            On a short break. Be back around @(DateTime.Now.Add(BreakTimeSpan))!
+            On a short break. Be back around @(DateTime.Now.Add(settings.BreakTimeSpan))!
         </div>
     </div>
 </div>
@@ -90,8 +90,8 @@
 @code {
     // 4 work and 4 break cycles counted twice
     private const int cycleCount = 4;
-    private static readonly TimeSpan WorkTimeSpan = TimeSpan.FromSeconds(15);
-    private static readonly TimeSpan BreakTimeSpan = TimeSpan.FromSeconds(3);
+
+    private TaskTimerSettings settings = new TaskTimerSettings(TimeSpan.FromMinutes(25), TimeSpan.FromMinutes(5));
 
     public TimeSpan TimeRemaining { get; private set; }
     public TaskTimerState CurrentState { get; private set; } = new(TaskTimerStateValue.Stopped);
@@ -134,11 +134,11 @@
     {
         // do not submit empty notes
         // do not submit duplicate notes
-        if (!string.IsNullOrWhiteSpace(Model?.Description) && completedSessions.All(s => s.WorkNotes?.Trim() !=
-        Model?.Description))
+        if (!string.IsNullOrWhiteSpace(Model?.Description)
+        && completedSessions.All(s => s.WorkNotes?.Trim() != Model?.Description.Trim()))
         {
             Logger.LogInformation("Work notes submitted. Description = {Description}", Model!.Description);
-            completedSessions = completedSessions.Prepend(new TimerSession("Work", WorkTimeSpan, DateTime.Now,
+            completedSessions = completedSessions.Prepend(new TimerSession("Work", settings.WorkTimeSpan, DateTime.Now,
             Model!.Description));
             Model!.Description = "";
         }
@@ -172,21 +172,21 @@
             // skip the first break time, stop loop after last work cycle
             if (CurrentPhase == "Break")
             {
-                module?.InvokeVoidAsync("run", BreakTimeSpan.TotalSeconds);
-                await taskTimerService.StartAsync(BreakTimeSpan);
+                module?.InvokeVoidAsync("run", settings.BreakTimeSpan.TotalSeconds);
+                await taskTimerService.StartAsync(settings.BreakTimeSpan);
             }
 
-            TimeRemaining = WorkTimeSpan;
+            TimeRemaining = settings.WorkTimeSpan;
             CurrentPhase = "Work";
             StateHasChanged();
 
             // start a javascript timer on the client
             module?.InvokeVoidAsync("run", settings.WorkTimeSpan.TotalSeconds);
             // then, call and wait for the periodic timer on the server
-            await taskTimerService.StartAsync(WorkTimeSpan);
+            await taskTimerService.StartAsync(settings.WorkTimeSpan);
 
             // setup break time before next loop iteration
-            TimeRemaining = BreakTimeSpan;
+            TimeRemaining = settings.BreakTimeSpan;
             CurrentPhase = "Break";
             StateHasChanged();
         }
