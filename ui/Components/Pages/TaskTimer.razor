@@ -93,19 +93,21 @@
 
 @code {
     // Razor Page constant variables
-    private const int cycleCount = 4;
+    private const int WorkCycles = 4;
 
     // DTOs and model class reference types
     public TimeSpan TimeRemaining { get; private set; }
     public TaskTimerState CurrentState { get; private set; } = TaskTimerState.Stopped;
-    private TaskTimerSettings settings = new();
+    private TaskTimerOptions options = new();
     private IEnumerable<TimerSession> completedSessions = [];
     private IJSObjectReference? module;
 
     // primitive type state variables
     public string CurrentPhase { get; set; } = "";
-    private int elapsedCount = 0;
-    private int currentCycleCount => 1 + (elapsedCount / 2);
+    public string LastCycleCompletedAt => completedSessions.Any() ? completedSessions.Last().CompletedAt.ToLongTimeString()
+    : "(no time recorded)";
+    private int Elapsed = 0;
+    private int CurrentWorkCycle = 0;
     private string HideToast => CurrentPhase == "Break" ? "show" : "hide";
 
     // EditForm variables
@@ -181,12 +183,13 @@
 
         while (CurrentWorkCycle < WorkCycles)
         {
-            await HandleWorkCycleAsync();
+            await HandleCycleAsync(options.WorkTimeSpan, "Work");
+            CurrentWorkCycle++;
 
-            // if all expected cycles have raised elapsed events, skip the last break timer
-            if (currentCycleCount < cycleCount)
+            // if all but the last break cycle have raised elapsed events, skip the last break timer
+            if (CurrentWorkCycle < WorkCycles)
             {
-                await HandleBreakCycleAsync();
+                await HandleCycleAsync(options.BreakTimeSpan, "Break");
             }
         }
 
@@ -196,20 +199,14 @@
         StateHasChanged();
     }
 
-    private async Task HandleWorkCycleAsync()
+    private async Task HandleCycleAsync(TimeSpan timeRemaining, string phase)
     {
-        TimeRemaining = settings.WorkTimeSpan;
-        CurrentPhase = "Work";
+        ArgumentOutOfRangeException.ThrowIfNullOrWhiteSpace(phase);
+
+        TimeRemaining = timeRemaining;
+        CurrentPhase = phase;
         StateHasChanged();
 
-        module?.InvokeVoidAsync("run", TimeRemaining.TotalSeconds);
-        await taskTimerService.StartAsync(TimeRemaining);
-    }
-
-    private async Task HandleBreakCycleAsync()
-    {
-        TimeRemaining = settings.BreakTimeSpan;
-        CurrentPhase = "Break";
         module?.InvokeVoidAsync("run", TimeRemaining.TotalSeconds);
         await taskTimerService.StartAsync(TimeRemaining);
     }

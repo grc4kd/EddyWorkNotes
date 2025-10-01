@@ -50,8 +50,6 @@ public partial class TaskTimerTests : PageTest
         await Expect(Page.Locator("#timerDisplay").First).ToHaveTextAsync(MatchClockRegex());
     }
 
-    // create a new test here that starts the timer, waits for 5 seconds, and then expects the current state of a text element to change to "Break" AI!
-
     [GeneratedRegex(@"\d\d:\d\d")]
     private static partial Regex MatchClockRegex();
 }
