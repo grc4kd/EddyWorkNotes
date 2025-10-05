@@ -67,10 +67,10 @@ public class TaskTimerServiceTest
         // When - Start and immediately cancel
         var task = timer.StartAsync(TimeSpan.FromMinutes(25));
         timer.Cancel();
-        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+        await task;
 
         // Then
-        Assert.Equal(TaskStatus.Canceled, task.Status);
+        Assert.Equal(TaskStatus.RanToCompletion, task.Status);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class TaskTimerServiceTest
         // When - Start and immediately cancel
         var task = timer.StartAsync(TimeSpan.FromMinutes(25));
         timer.Cancel();
-        await Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+        await task;
 
         // Then
         Assert.Equal(string.Empty, result);

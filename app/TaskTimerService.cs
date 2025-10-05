@@ -18,16 +18,24 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
 
         logger.LogInformation("Starting task timer at local time: {t1}, ending at time: {t2}.", startTime, endTime);
 
-        while (DateTime.Now < endTime && !cancellationTokenSource.IsCancellationRequested)
+        if (!cancellationTokenSource.IsCancellationRequested)
         {
-            await timer.WaitForNextTickAsync(cancellationTokenSource.Token);
-            logger.LogInformation("Done waiting for next tick on task timer at {now}", DateTime.Now);
+            try
+            {
+                if (await timer.WaitForNextTickAsync(cancellationTokenSource.Token))
+                {
+                    elapsedCount++;
+                    await notifier.Update("elapsedCount", elapsedCount);
+                }
+            }
+            catch (OperationCanceledException) when (cancellationTokenSource.Token.IsCancellationRequested)
+            {
+                logger.LogWarning("TaskTimer was cancelled at {now}.", DateTime.Now);
+            }
         }
 
-        elapsedCount++;
-        await notifier.Update("elapsedCount", elapsedCount);
+        logger.LogInformation("Timer finished running at local time: {now}", DateTime.Now);
     }
 
     public void Cancel() => cancellationTokenSource.Cancel();
-    public Task CancelAsync() => cancellationTokenSource.CancelAsync();
 }
