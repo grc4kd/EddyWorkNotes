@@ -182,13 +182,15 @@
         CurrentState = TaskTimerState.Running;
         StateHasChanged();
 
-        while (CurrentWorkCycle < WorkCycles)
+        var cts = taskTimerService.cancellationTokenSource;
+
+        while (CurrentWorkCycle < WorkCycles && !cts.IsCancellationRequested)
         {
             await HandleCycleAsync(options.WorkTimeSpan, "Work");
             CurrentWorkCycle++;
 
             // if all but the last break cycle have raised elapsed events, skip the last break timer
-            if (CurrentWorkCycle < WorkCycles)
+            if (CurrentWorkCycle < WorkCycles && !cts.IsCancellationRequested)
             {
                 await HandleCycleAsync(options.BreakTimeSpan, "Break");
             }

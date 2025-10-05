@@ -4,7 +4,7 @@ namespace Eddy;
 
 public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService notifier)
 {
-    private readonly CancellationTokenSource cancellationTokenSource = new();
+    public readonly CancellationTokenSource cancellationTokenSource = new();
     private int elapsedCount = 0;
     private readonly ILogger<TaskTimerService> logger = logger;
     private readonly NotifierService notifier = notifier;
@@ -45,13 +45,13 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         }
         catch (ObjectDisposedException ex)
         {
-            logger.LogWarning("Object was disposed during timer cancellation: {message}", ex.Message);
+            logger.LogError("Object was disposed during timer cancellation: {message}", ex.Message);
         }
         catch (AggregateException ae)
         {
-            logger.LogWarning("Exception during timer cancellation: {message}", ae.GetBaseException());
+            logger.LogError("Exception during timer cancellation: {message}", ae.GetBaseException());
             foreach (var ie in ae.InnerExceptions) {
-                logger.LogWarning("Exception details: {message}", ie.Message);
+                logger.LogError("Exception details: {message}", ie.Message);
             }
         }
     }
