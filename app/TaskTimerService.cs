@@ -37,22 +37,32 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         logger.LogInformation("Timer finished running at local time: {now}", DateTime.Now);
     }
 
+    private void LogExceptionMessage(Exception ex, LogLevel logLevel = LogLevel.Error)
+    {
+        if (ex is ObjectDisposedException)
+        {
+            logger.LogError("Object was disposed during timer cancellation: {message}", ex.Message);
+        }
+
+        if (ex is AggregateException ae)
+        {
+            logger.LogError("Exception during timer cancellation: {message}", ae.GetBaseException());
+            foreach (var ie in ae.InnerExceptions)
+            {
+                logger.LogError("Exception details: {message}", ie.Message);
+            }
+        }
+    }
+
     public void Cancel()
     {
         try
         {
             cancellationTokenSource.Cancel();
         }
-        catch (ObjectDisposedException ex)
+        catch (Exception ex)
         {
-            logger.LogError("Object was disposed during timer cancellation: {message}", ex.Message);
-        }
-        catch (AggregateException ae)
-        {
-            logger.LogError("Exception during timer cancellation: {message}", ae.GetBaseException());
-            foreach (var ie in ae.InnerExceptions) {
-                logger.LogError("Exception details: {message}", ie.Message);
-            }
+            LogExceptionMessage(ex);
         }
     }
 }
