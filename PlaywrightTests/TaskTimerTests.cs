@@ -66,6 +66,10 @@ public partial class TaskTimerTests : PageTest
         await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Task Timer" })).ToBeVisibleAsync();
         await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Start" })).ToBeVisibleAsync();
         await Expect(Page.Locator("div[asp-for=timeRemaining]").First).ToContainTextAsync("Time Remaining");
+
+        // Verify timer is stoped
+        await Expect(Page.Locator("#timerDisplay").First).Not.ToContainTextAsync("remaining");
+        await Expect(Page.Locator("#timerDisplay").First).ToHaveTextAsync(MatchClockRegex());
     }
 
     [GeneratedRegex(@"\d\d:\d\d")]
