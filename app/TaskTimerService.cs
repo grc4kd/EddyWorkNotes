@@ -37,5 +37,22 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         logger.LogInformation("Timer finished running at local time: {now}", DateTime.Now);
     }
 
-    public void Cancel() => cancellationTokenSource.Cancel();
+    public void Cancel()
+    {
+        try
+        {
+            cancellationTokenSource.Cancel();
+        }
+        catch (ObjectDisposedException ex)
+        {
+            logger.LogWarning("Object was disposed during timer cancellation: {message}", ex.Message);
+        }
+        catch (AggregateException ae)
+        {
+            logger.LogWarning("Exception during timer cancellation: {message}", ae.GetBaseException());
+            foreach (var ie in ae.InnerExceptions) {
+                logger.LogWarning("Exception details: {message}", ie.Message);
+            }
+        }
+    }
 }

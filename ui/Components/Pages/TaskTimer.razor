@@ -169,6 +169,7 @@
             {
                 // Handle exceptions if client JS module is disconnected
                 Logger.LogWarning("JavaScript module disconnected, EditForm Model state: {Model}", Model);
+                taskTimerService.Cancel();
             }
         }
     }
