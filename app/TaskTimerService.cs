@@ -41,7 +41,7 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
     {
         if (ex is ObjectDisposedException)
         {
-            logger.LogError("Object was disposed during timer cancellation: {message}", ex.Message);
+            logger.Log(logLevel, "Object was disposed during timer cancellation: {message}", ex.Message);
         }
 
         if (ex is AggregateException ae)
@@ -49,7 +49,7 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
             logger.LogError("Exception during timer cancellation: {message}", ae.GetBaseException());
             foreach (var ie in ae.InnerExceptions)
             {
-                logger.LogError("Exception details: {message}", ie.Message);
+                logger.Log(logLevel, "Exception details: {message}", ie.Message);
             }
         }
     }
