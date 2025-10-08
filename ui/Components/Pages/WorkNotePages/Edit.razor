@@ -1,0 +1,94 @@
+@page "/worknotes/edit"
+@using Microsoft.EntityFrameworkCore
+@using Eddy.Models
+@inject IDbContextFactory<ui.Data.EddyWorkNotesContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit</PageTitle>
+
+<h1>Edit</h1>
+
+<h2>WorkNote</h2>
+<hr />
+@if (WorkNote is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="WorkNote" OnValidSubmit="UpdateWorkNote" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+                <input type="hidden" name="WorkNote.Id" value="@WorkNote.Id" />
+                <div class="mb-3">
+                    <label for="recordedattime" class="form-label">RecordedAtTime:</label>
+                    <InputDate id="recordedattime" @bind-Value="WorkNote.RecordedAtTime" class="form-control" />
+                    <ValidationMessage For="() => WorkNote.RecordedAtTime" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description:</label>
+                    <InputText id="description" @bind-Value="WorkNote.Description" class="form-control" />
+                    <ValidationMessage For="() => WorkNote.Description" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/worknotes">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private WorkNote? WorkNote { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        WorkNote ??= await context.WorkNote.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (WorkNote is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task UpdateWorkNote()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(WorkNote!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!WorkNoteExists(WorkNote!.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/worknotes");
+    }
+
+    private bool WorkNoteExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.WorkNote.Any(e => e.Id == id);
+    }
+}

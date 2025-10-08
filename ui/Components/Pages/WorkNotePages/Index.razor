@@ -1,0 +1,37 @@
+@page "/worknotes"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Eddy.Models
+@using ui.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<ui.Data.EddyWorkNotesContext> DbFactory
+
+<PageTitle>Index</PageTitle>
+
+<h1>Index</h1>
+
+<p>
+    <a href="worknotes/create">Create New</a>
+</p>
+
+<QuickGrid Class="table" Items="context.WorkNote">
+    <PropertyColumn Property="worknote => worknote.RecordedAtTime" />
+    <PropertyColumn Property="worknote => worknote.Description" />
+
+    <TemplateColumn Context="worknote">
+        <a href="@($"worknotes/edit?id={worknote.Id}")">Edit</a> |
+        <a href="@($"worknotes/details?id={worknote.Id}")">Details</a> |
+        <a href="@($"worknotes/delete?id={worknote.Id}")">Delete</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private EddyWorkNotesContext context = default!;
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}
