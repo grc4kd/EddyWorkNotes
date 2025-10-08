@@ -2,12 +2,18 @@ using Eddy;
 using Markdig;
 using ui.Components;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using ui.Data;
+using Microsoft.Data.Sqlite;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var conStrBuilder = new SqliteConnectionStringBuilder(
+    builder.Configuration.GetConnectionString("EddyWorkNotesContext")
+);
+var connection = conStrBuilder.ConnectionString;
+
 builder.Services.AddDbContextFactory<EddyWorkNotesContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("EddyWorkNotesContext") ?? throw new InvalidOperationException("Connection string 'EddyWorkNotesContext' not found.")));
+    options.UseSqlite(connection ?? throw new InvalidOperationException("Connection string 'EddyWorkNotesContext' not found.")));
 
 builder.Services.AddQuickGridEntityFrameworkAdapter();
 
@@ -18,7 +24,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddScoped<NotifierService>();
 builder.Services.AddScoped<TaskTimerService>();
-builder.Services.AddSingleton<MarkdownPipelineBuilder>();
+builder.Services.AddScoped<MarkdownPipelineBuilder>();
 
 var app = builder.Build();
 

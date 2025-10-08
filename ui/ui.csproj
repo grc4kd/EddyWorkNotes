@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <Target Name="_RemovePublishDirBeforePublishing" BeforeTargets="BeforePublish">
     <RemoveDir Directories="$(PublishDir)" Condition="'$(PublishDir)' != ''" />
   </Target>
@@ -22,6 +22,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>67c126ee-22f5-4240-aeb3-241917d6c3e1</UserSecretsId>
   </PropertyGroup>
 
 </Project>
