@@ -1,22 +1,35 @@
 @page "/worknotesreport"
 @using Microsoft.AspNetCore.Components.QuickGrid
-@using ui.Components.Models
+@using ui.Data
 
 <PageTitle>Work Notes Report</PageTitle>
 
-<h1>Promotion Grid Example</h1>
-
+<h1>Work Notes Report Grid</h1>
 <QuickGrid Items="workNotes">
+    <PropertyColumn Property="@(w => w.RecordedAtTime)" Title="Time" />
     <PropertyColumn Property="@(w => w.Description)" Title="Description" />
 </QuickGrid>
 
-
 @code {
-    private IQueryable<WorkNote> workNotes = new List<WorkNote>() {
-        new WorkNote("Completed the initial setup of the project."),
-        new WorkNote("Reviewed the requirements and created a plan."),
-        new WorkNote("Implemented the core functionality for TaskTimer."),
-        new WorkNote("Fixed bugs related to time formatting."),
-        new WorkNote("Added unit tests for TaskTimerService."),
-    }.AsQueryable();
+    [Inject]
+    private EddyWorkNotesContext context { get; set; } = null!;
+
+    private IQueryable<Eddy.Models.WorkNote> workNotes = Array.Empty<Eddy.Models.WorkNote>().AsQueryable();
+
+    protected override void OnInitialized()
+    {
+        if (context != null)
+        {
+            workNotes = context.WorkNote
+                .OrderBy(x => x.RecordedAtTime);
+        }
+    }
+
+    public void Dispose()
+    {
+        if (context != null && context.Database != null)
+        {
+            context.DisposeAsync().GetAwaiter().GetResult();
+        }
+    }
 }
