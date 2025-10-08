@@ -6,6 +6,10 @@
   <ItemGroup>
     <ProjectReference Include="..\app\Eddy.csproj" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Markdig" Version="0.42.0" />
+  </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>

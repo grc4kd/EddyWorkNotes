@@ -62,9 +62,10 @@
                     {
                         <div class="card my-2">
                             <div class="card-body">
-                                <p class="card-text"><small class="text-muted">Recorded at
-                                        @session.CompletedAt.ToShortTimeString()</small></p>
-                                <p class="card-text">@session.WorkNotes</p>
+                            @if (@session.WorkNotes?.Length > 0) {
+                                <p class="card-text"><small class="text-muted">Recorded at @session.CompletedAt.ToShortTimeString()</small></p>
+                                <p class="my-2">@((MarkupString)parseNotes(session.WorkNotes))</p>
+                            }
                             </div>
                         </div>
                     }
@@ -136,26 +137,35 @@
             notifierService.Notify += subscriber;
         }
     }
-
+        
     /// <summary>
     /// Process form submission and update completed work notes. Do not submit empty notes or duplicate notes.
     /// Trim notes before comparison, but submit all data previously validated in the EditForm.
     /// </summary>
     private void Submit()
     {
-        static string trimNotes(WorkNotes notes) => (notes != null && !string.IsNullOrWhiteSpace(notes.Description)) ?
-        notes!.Description!.Trim() : string.Empty;
+        
 
         bool isInputBlank = (Model == null || string.IsNullOrWhiteSpace(Model?.Description));
 
-        if (Model != null && !isInputBlank && completedSessions.All(s => s.WorkNotes?.Trim() != trimNotes(Model)))
+        string trimmedNotes = Model?.Description is not null ? trimNotes(Model) : string.Empty;
+        string parsedNotes = trimmedNotes.Length > 0 ? parseNotes(trimmedNotes) : string.Empty;
+
+        if (Model != null && !isInputBlank && completedSessions.All(s => s.WorkNotes?.Trim() != trimmedNotes))
         {
-            Logger.LogInformation("Work notes submitted. Description = {Description}", Model!.Description);
-            completedSessions = completedSessions.Prepend(new TimerSession("Work", options.WorkTimeSpan, DateTime.Now,
-            Model!.Description));
+            Logger.LogInformation("Work notes submitted.\n{parsedNotes}", trimmedNotes);
+            completedSessions = completedSessions.Prepend(
+                new TimerSession("Work", options.WorkTimeSpan, DateTime.Now, trimmedNotes)); 
+            
+            // clear the active notes once completed session notes are stored
             Model!.Description = "";
         }
     }
+
+    static string trimNotes(WorkNotes notes) => (notes != null && !string.IsNullOrWhiteSpace(notes.Description)) ?
+        notes!.Description!.Trim() : string.Empty;
+
+    static string parseNotes(string markdown) => Markdig.Markdown.ToHtml(markdown);
 
     public async ValueTask DisposeAsync()
     {

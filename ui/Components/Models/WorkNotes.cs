@@ -6,9 +6,4 @@ public class WorkNotes
 {
     [StringLength(1000, ErrorMessage = "Work notes description is too long (1000 character limit).")]
     public string? Description { get; set; } = string.Empty;
-
-    public override string ToString()
-    {
-        return $"{nameof(WorkNotes)}: {nameof(Description)}: {Description}";
-    }
 }
