@@ -118,11 +118,11 @@
 
     // EditForm variables
     [SupplyParameterFromForm]
-    private WorkNotes? Model { get; set; }
+    private IWorkNotes? Model { get; set; }
     private MarkdownPipeline? MarkdownPipeline { get; set; }
 
     protected override void OnInitialized() {
-        Model ??= new();
+        Model ??= new WorkNotes();
         MarkdownPipeline ??= MarkdownPipelineBuilder.UseAdvancedExtensions().Build();
     } 
 
@@ -169,7 +169,7 @@
         }
     }
 
-    static string trimNotes(WorkNotes notes) => (notes != null && !string.IsNullOrWhiteSpace(notes.Description)) ?
+    static string trimNotes(IWorkNotes notes) => (notes != null && !string.IsNullOrWhiteSpace(notes.Description)) ?
         notes!.Description!.Trim() : string.Empty;
 
     string parseNotes(string markdown) => Markdown.ToHtml(markdown, MarkdownPipeline);
