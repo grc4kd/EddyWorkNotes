@@ -9,6 +9,7 @@
   
   <ItemGroup>
     <PackageReference Include="Markdig" Version="0.42.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid" Version="9.0.9" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -122,7 +122,7 @@
     private MarkdownPipeline? MarkdownPipeline { get; set; }
 
     protected override void OnInitialized() {
-        Model ??= new WorkNotes();
+        Model ??= new WorkNote();
         MarkdownPipeline ??= MarkdownPipelineBuilder.UseAdvancedExtensions().Build();
     } 
 
@@ -132,7 +132,7 @@
         {
             CurrentPhase = "Work";
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
-            Model = new WorkNotes();
+            Model = new WorkNote();
         }
 
         if (firstRender && notifierService is not null)

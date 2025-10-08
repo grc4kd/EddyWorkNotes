@@ -1,0 +1,22 @@
+@page "/worknotesreport"
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using ui.Components.Models
+
+<PageTitle>Work Notes Report</PageTitle>
+
+<h1>Promotion Grid Example</h1>
+
+<QuickGrid Items="workNotes">
+    <PropertyColumn Property="@(w => w.Description)" Title="Description" />
+</QuickGrid>
+
+
+@code {
+    private IQueryable<WorkNote> workNotes = new List<WorkNote>() {
+        new WorkNote("Completed the initial setup of the project."),
+        new WorkNote("Reviewed the requirements and created a plan."),
+        new WorkNote("Implemented the core functionality for TaskTimer."),
+        new WorkNote("Fixed bugs related to time formatting."),
+        new WorkNote("Added unit tests for TaskTimerService."),
+    }.AsQueryable();
+}
