@@ -1,5 +1,6 @@
 using ui.Components;
 using Eddy;
+using Markdig;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddScoped<NotifierService>();
 builder.Services.AddScoped<TaskTimerService>();
+builder.Services.AddScoped<MarkdownPipelineBuilder>();
 
 var app = builder.Build();
 
