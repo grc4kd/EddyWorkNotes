@@ -28,6 +28,14 @@ builder.Services.AddScoped<MarkdownPipelineBuilder>();
 
 var app = builder.Build();
 
+// Initialize database with seed data immediately after WebApplication builds.
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+
+    SeedData.Initialize(services);
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
