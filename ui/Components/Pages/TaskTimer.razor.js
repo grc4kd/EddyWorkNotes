@@ -23,9 +23,13 @@ function updateDisplay(totalSeconds) {
 
 // Format total seconds into whole minutes and seconds in MM:SS format
 export function formatTime(totalSeconds) {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = Math.floor(totalSeconds % 60);
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    const minuteNumber = totalSeconds / 60
+    const secondNumber = totalSeconds % 60
+
+    const minutes = String(Math.floor(minuteNumber)).padStart(2, '0');
+    const seconds = String(secondNumber).padStart(2, '0');
+
+    return `${minutes}:${seconds}`
 }
 
 function tick() {
@@ -38,7 +42,6 @@ function tick() {
     // stop at 1 second left on the clock (next tick updates to 0)
     if (remainingTimeSeconds <= 0) {
         stop();
-        init();
     }
 }
 

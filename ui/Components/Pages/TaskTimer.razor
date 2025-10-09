@@ -121,6 +121,8 @@
     private IWorkNotes? Model { get; set; }
     private MarkdownPipeline? MarkdownPipeline { get; set; }
 
+    protected async override Task OnInitializedAsync() => module?.InvokeVoidAsync("init");
+
     protected override void OnInitialized() {
         Model ??= new WorkNote();
         MarkdownPipeline ??= MarkdownPipelineBuilder
@@ -140,9 +142,7 @@
     {
         if (firstRender && module is null)
         {
-            CurrentPhase = "Work";
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
-            Model = new WorkNote();
         }
 
         if (firstRender && notifierService is not null)
