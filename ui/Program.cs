@@ -1,9 +1,9 @@
 using Eddy;
 using Markdig;
-using ui.Components;
 using Microsoft.EntityFrameworkCore;
 using ui.Data;
 using Microsoft.Data.Sqlite;
+using ui.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,14 +28,6 @@ builder.Services.AddScoped<MarkdownPipelineBuilder>();
 
 var app = builder.Build();
 
-// Initialize database with seed data immediately after WebApplication builds.
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-
-    SeedData.Initialize(services);
-}
-
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -49,6 +41,9 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+// Initialize database with seed after adding static files
+app.CreateDbIfNotExists();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test", "test\test.csproj", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlaywrightTests", "PlaywrightTests\PlaywrightTests.csproj", "{B82260D1-B9C7-4889-9D2F-910EBBE900D9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataEntities", "DataEntities\DataEntities.csproj", "{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{B82260D1-B9C7-4889-9D2F-910EBBE900D9}.Release|x64.Build.0 = Release|Any CPU
 		{B82260D1-B9C7-4889-9D2F-910EBBE900D9}.Release|x86.ActiveCfg = Release|Any CPU
 		{B82260D1-B9C7-4889-9D2F-910EBBE900D9}.Release|x86.Build.0 = Release|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Debug|x64.Build.0 = Debug|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Debug|x86.Build.0 = Debug|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Release|x64.ActiveCfg = Release|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Release|x64.Build.0 = Release|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Release|x86.ActiveCfg = Release|Any CPU
+		{DBB7C96E-8072-4EB4-B9AB-D78A53019BC0}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,7 +1,9 @@
 @page "/worknotes/edit"
 @using Microsoft.EntityFrameworkCore
-@using Eddy.Models
-@inject IDbContextFactory<ui.Data.EddyWorkNotesContext> DbFactory
+@using DataEntities
+@using Data
+
+@inject IDbContextFactory<EddyWorkNotesContext> DbFactory
 @inject NavigationManager NavigationManager
 
 <PageTitle>Edit</PageTitle>

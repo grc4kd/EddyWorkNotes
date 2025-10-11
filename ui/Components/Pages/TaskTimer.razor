@@ -121,7 +121,13 @@
     private IWorkNotes? Model { get; set; }
     private MarkdownPipeline? MarkdownPipeline { get; set; }
 
-    protected async override Task OnInitializedAsync() => module?.InvokeVoidAsync("init");
+    protected async override Task OnInitializedAsync() {
+        var task = module?.InvokeVoidAsync("init");
+        
+        if (task != null) {
+            await task.GetValueOrDefault();
+        }
+    }
 
     protected override void OnInitialized() {
         Model ??= new WorkNote();

@@ -5,6 +5,7 @@
   
   <ItemGroup>
     <ProjectReference Include="..\app\Eddy.csproj" />
+    <ProjectReference Include="..\DataEntities\DataEntities.csproj" />
   </ItemGroup>
   
   <ItemGroup>
@@ -24,5 +25,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>67c126ee-22f5-4240-aeb3-241917d6c3e1</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Database.db" />
+    <None Remove="Database.db-shm" />
+    <None Remove="Database.db-wal" />
+  </ItemGroup>
 
 </Project>
