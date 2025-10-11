@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ui.Data;
 
@@ -10,9 +11,11 @@ using ui.Data;
 namespace ui.Migrations
 {
     [DbContext(typeof(EddyWorkNotesContext))]
-    partial class EddyWorkNotesContextModelSnapshot : ModelSnapshot
+    [Migration("20251011030202_Update_WorkNotes_Project")]
+    partial class Update_WorkNotes_Project
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");

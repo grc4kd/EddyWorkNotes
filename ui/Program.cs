@@ -42,8 +42,14 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
-// Initialize database with seed after adding static files
+// Initialize database after use static files
 app.CreateDbIfNotExists();
+
+// Seed database in development (drops existing data)
+if (app.Environment.IsDevelopment())
+{
+    app.InitializeDb();
+}
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

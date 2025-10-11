@@ -5,6 +5,7 @@
 @using Markdig.Parsers
 @using Markdig.Renderers
 @using ui.Components.Models
+@using ui.Data
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
@@ -13,6 +14,7 @@
 @inject NotifierService notifierService
 @inject ILogger<TaskTimer> Logger
 @inject MarkdownPipelineBuilder MarkdownPipelineBuilder
+@inject EddyWorkNotesContext EddyWorkNotesContext
 
 <PageTitle>Task Timer</PageTitle>
 
@@ -177,9 +179,16 @@
         if (Model != null && !isInputBlank && completedSessions.All(s => s.WorkNotes?.Trim() != trimmedNotes))
         {
             Logger.LogInformation("Work notes submitted.\n{parsedNotes}", trimmedNotes);
-            completedSessions = completedSessions.Prepend(
-                new TimerSession("Work", options.WorkTimeSpan, DateTime.Now, trimmedNotes)); 
             
+            var session = new TimerSession("Work", options.WorkTimeSpan, DateTime.Now, trimmedNotes);
+            completedSessions = completedSessions.Prepend(session);
+            
+            EddyWorkNotesContext.WorkNote.Add(new DataEntities.WorkNote{
+                Description = trimmedNotes,
+                RecordedAtTime = session.CompletedAt
+            });
+            EddyWorkNotesContext.SaveChanges();
+
             // clear the active notes once completed session notes are stored
             Model!.Description = "";
         }
