@@ -41,7 +41,7 @@ RUN dotnet publish ui/ui.csproj -a $TARGETARCH --no-restore -o /app
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
-EXPOSE 5086
+EXPOSE 8080
 COPY --link --from=publish /app .
 USER $APP_UID
 ENTRYPOINT [ "./ui" ]

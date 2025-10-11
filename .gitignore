@@ -21,3 +21,5 @@ docs/book
 
 # exclude local databases from development
 ui/*.db
+ui/*.db-shm
+ui/*.db-wal
