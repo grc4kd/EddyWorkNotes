@@ -10,10 +10,10 @@ public class SeedData
 {
     public static void Initialize(EddyWorkNotesContext context)
     {
-        // Drop all existing notes each time initialize is called.
+        // Abort if notes already exist by default.
         if (context.WorkNote.Any())
         {
-            context.WorkNote.ExecuteDelete();
+            return;
         }
         
         // Add a few demo WorkNotes. Feel free to replace or extend these.
