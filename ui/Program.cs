@@ -2,18 +2,21 @@ using Eddy;
 using Markdig;
 using Microsoft.EntityFrameworkCore;
 using ui.Data;
-using Microsoft.Data.Sqlite;
 using ui.Components;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var conStrBuilder = new SqliteConnectionStringBuilder(
-    builder.Configuration.GetConnectionString("EddyWorkNotesContext")
-);
-var connection = conStrBuilder.ConnectionString;
+var npgsqlConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+        builder.Configuration.GetConnectionString("EddyWorkNotesContext")
+    );
+
+npgsqlConnectionStringBuilder.Host = Environment.GetEnvironmentVariable("EDDY_POSTGRES_HOST") ?? "127.0.0.1";
+
+string connection = npgsqlConnectionStringBuilder.ConnectionString;
 
 builder.Services.AddDbContextFactory<EddyWorkNotesContext>(options =>
-    options.UseSqlite(connection ?? throw new InvalidOperationException("Connection string 'EddyWorkNotesContext' not found.")));
+    options.UseNpgsql(connection ?? throw new InvalidOperationException("Connection string 'EddyWorkNotesContext' not found.")));
 
 builder.Services.AddQuickGridEntityFrameworkAdapter();
 

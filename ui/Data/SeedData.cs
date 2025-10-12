@@ -19,23 +19,23 @@ public class SeedData
         // Add a few demo WorkNotes. Feel free to replace or extend these.
         context.UpdateRange(new List<WorkNote>{
             new() {
-                RecordedAtTime = new DateTime(1986, 8, 15, 11, 35, 0),
+                RecordedAtTime = new DateTime(1986, 8, 15, 11, 35, 0).ToUniversalTime(),
                 Description = "Set up initial project structure and folder hierarchy."
             },
             new() {
-                RecordedAtTime = new DateTime(1986, 8, 15, 11, 50, 0),
+                RecordedAtTime = new DateTime(1986, 8, 15, 11, 50, 0).ToUniversalTime(),
                 Description = "Configured Entity Framework Core with SQL Server provider."
             },
             new() {
-                RecordedAtTime = new DateTime(1986, 8, 15, 12, 05, 0),
+                RecordedAtTime = new DateTime(1986, 8, 15, 12, 05, 0).ToUniversalTime(),
                 Description = "Added migration to create the WorkNotes table."
             },
             new() {
-                RecordedAtTime = new DateTime(1986, 8, 15, 12, 20, 0),
+                RecordedAtTime = new DateTime(1986, 8, 15, 12, 20, 0).ToUniversalTime(),
                 Description = "Implemented the SeedData class to populate the table on startup."
             },
             new() {
-                RecordedAtTime = new DateTime(1986, 8, 16, 1, 0, 0),
+                RecordedAtTime = new DateTime(1986, 8, 16, 1, 0, 0).ToUniversalTime(),
                 Description = "Review and document all work items in this table for future reference."
             } });
 

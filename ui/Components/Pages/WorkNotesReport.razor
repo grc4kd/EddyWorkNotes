@@ -7,7 +7,7 @@
 
 <h1>Work Notes Report Grid</h1>
 <QuickGrid Items="workNotes">
-    <PropertyColumn Property="@(w => w.RecordedAtTime)" Title="Time" />
+    <PropertyColumn Property="@(w => w.RecordedAtTime.ToLocalTime())" Title="Time" />
     <PropertyColumn Property="@(w => w.Description)" Title="Description" />
 </QuickGrid>
 

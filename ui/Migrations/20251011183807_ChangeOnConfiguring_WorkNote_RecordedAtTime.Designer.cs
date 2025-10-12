@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ui.Data;
@@ -11,9 +12,11 @@ using ui.Data;
 namespace ui.Migrations
 {
     [DbContext(typeof(EddyWorkNotesContext))]
-    partial class EddyWorkNotesContextModelSnapshot : ModelSnapshot
+    [Migration("20251011183807_ChangeOnConfiguring_WorkNote_RecordedAtTime")]
+    partial class ChangeOnConfiguring_WorkNote_RecordedAtTime
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

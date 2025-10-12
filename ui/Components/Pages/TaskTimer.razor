@@ -180,7 +180,7 @@
         {
             Logger.LogInformation("Work notes submitted.\n{parsedNotes}", trimmedNotes);
             
-            var session = new TimerSession("Work", options.WorkTimeSpan, DateTime.Now, trimmedNotes);
+            var session = new TimerSession("Work", options.WorkTimeSpan, trimmedNotes);
             completedSessions = completedSessions.Prepend(session);
             
             EddyWorkNotesContext.WorkNote.Add(new DataEntities.WorkNote{
