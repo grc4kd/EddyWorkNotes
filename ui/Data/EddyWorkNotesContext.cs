@@ -3,13 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ui.Data
 {
-    public class EddyWorkNotesContext : DbContext
+    public class EddyWorkNotesContext(DbContextOptions<EddyWorkNotesContext> options) : DbContext(options)
     {
-        public EddyWorkNotesContext(DbContextOptions<EddyWorkNotesContext> options)
-            : base(options)
-        {
-        }
-
         public DbSet<WorkNote> WorkNote { get; set; } = default!;
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

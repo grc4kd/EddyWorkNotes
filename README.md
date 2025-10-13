@@ -22,7 +22,7 @@ docker run --rm -it `
     -v ${env:APPDATA}/microsoft/UserSecrets/:/home/app/.microsoft/usersecrets `
     -v $env:USERPROFILE\.aspnet\https:/https/ `
     -e ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx `
-    -e ASPNETCORE_Kestrel__Certificates__Default__Password="$DEV_CERT_PASSWORD" `
+    -e ASPNETCORE_Kestrel__Certificates__Default__Password="$env:DEV_CERT_PASSWORD" `
     eddypmassistant:latest
 ```
 

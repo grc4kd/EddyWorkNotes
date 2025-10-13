@@ -1,3 +1,5 @@
+using Npgsql;
+
 namespace ui.Data
 {
     public static class Extensions
@@ -10,7 +12,7 @@ namespace ui.Data
             var context = services.GetRequiredService<EddyWorkNotesContext>();
             context.Database.EnsureCreated();
         }
-        
+
         public static void InitializeDb(this IHost host)
         {
             using var scope = host.Services.CreateScope();

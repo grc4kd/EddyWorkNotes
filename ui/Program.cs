@@ -8,17 +8,19 @@ using Npgsql;
 var builder = WebApplication.CreateBuilder(args);
 var connStrName = "EddyWorkNotes";
 
-var npgsqlConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-    builder.Configuration.GetConnectionString(connStrName) 
-    ?? throw new InvalidOperationException($"Connection string '{connStrName}' not found."))
+static NpgsqlConnectionStringBuilder BuildConnectionString(WebApplicationBuilder builder, string connStrName)
 {
-    // allow overriding the postgres database server host using environment variable
-    Host = Environment.GetEnvironmentVariable("EDDY_POSTGRES_HOST") ?? "localhost"
-};
+    var npgsqlConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+        builder.Configuration.GetConnectionString(connStrName)
+        ?? throw new InvalidOperationException($"Connection string '{connStrName}' not found."))
+    {
+        // allow overriding the postgres database server host using environment variable
+        Host = Environment.GetEnvironmentVariable("EDDY_POSTGRES_HOST") ?? "localhost"
+    };
+    return npgsqlConnectionStringBuilder;
+}
 
-string connection = npgsqlConnectionStringBuilder.ConnectionString;
-
-builder.Services.AddDbContextFactory<EddyWorkNotesContext>(options => options.UseNpgsql(connection));
+builder.Services.AddDbContextFactory<EddyWorkNotesContext>(options => options.UseNpgsql(BuildConnectionString(builder, connStrName).ConnectionString));
 
 builder.Services.AddQuickGridEntityFrameworkAdapter();
 
