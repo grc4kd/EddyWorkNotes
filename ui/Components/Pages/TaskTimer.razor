@@ -5,6 +5,7 @@
 @using Markdig.Parsers
 @using Markdig.Renderers
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.IdentityModel.Tokens
 @using ui.Components.Models
 @using ui.Data
 @rendermode InteractiveServer
@@ -93,13 +94,11 @@
 
 <!-- this toast is hidden by default, and controlled by CSS classes 'show' and 'hide' -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div id="toastNotification" class="toast @(ShowToast ? "show" : "hide")" role="alert" aria-live="assertive"
-        aria-atomic="true">
+    <div id="toastNotification" class="toast @(ShowToast ? "show" : "hide")" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-header">
             <strong class="me-auto">Task Timer</strong>
             <small>Cycle complete: @LastCycleCompletedAt</small>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" @onclick="() => ShowToast = false"
-                aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" @onclick="() => ShowToast = false" aria-label="Close"></button>
         </div>
         <div class="toast-body">
             On a short break for <em>@(options.BreakTimeSpan.TotalMinutes)</em> minutes. Be right back!
@@ -134,7 +133,7 @@
 
     private int Elapsed = 0;
     private int CurrentWorkCycle = 0;
-    private string HideToast => CurrentPhase == "Break" ? "show" : "hide";
+    private bool ShowToast = false;
 
     // EditForm variables
     [SupplyParameterFromForm]
