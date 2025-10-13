@@ -1,5 +1,3 @@
-using Npgsql;
-
 namespace ui.Data
 {
     public static class Extensions
