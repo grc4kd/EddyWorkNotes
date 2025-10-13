@@ -26,11 +26,14 @@ builder.Services.AddQuickGridEntityFrameworkAdapter();
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// Add services to the container.
+// Custom app service dependencies
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddScoped<NotifierService>();
 builder.Services.AddScoped<TaskTimerService>();
+builder.Services.AddScoped<TimerCycleService>();
+
+// Third party library service dependencies
 builder.Services.AddScoped<MarkdownPipelineBuilder>();
 
 var app = builder.Build();

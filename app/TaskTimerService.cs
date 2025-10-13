@@ -4,22 +4,41 @@ namespace Eddy;
 
 public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService notifier)
 {
+    private PeriodicTimer? timer;
     public readonly CancellationTokenSource cancellationTokenSource = new();
     private int elapsedCount = 0;
-    private readonly ILogger<TaskTimerService> logger = logger;
-    private readonly NotifierService notifier = notifier;
 
-    public async Task StartAsync(TimeSpan Period)
+    public bool IsRunning => StopTimeUtc > DateTime.UtcNow;
+    public string CurrentPhase { get; private set; } = string.Empty;
+    public TimeSpan TimeRemaining
     {
-        using var timer = new PeriodicTimer(Period);
+        get
+        {
+            if (!IsRunning)
+                return TimeSpan.Zero;
 
-        var startTime = DateTime.Now;
-        var endTime = startTime + Period;
+            var timespan = StopTimeUtc - DateTime.UtcNow;
+            if (timespan > TimeSpan.Zero)
+                return timespan;
+            
+            return TimeSpan.Zero;
+        }
+    }
 
-        logger.LogInformation("Starting task timer at local time: {t1}, ending at time: {t2}.", startTime, endTime);
+    public DateTime StopTimeUtc { get; private set; }
+
+    public async Task StartAsync(TimeSpan Period, string Phase)
+    {
+        CurrentPhase = Phase;
+        StopTimeUtc = DateTime.UtcNow.Add(Period);
+
+        timer = new PeriodicTimer(Period);
+
+        logger.LogInformation("Time/Now[{now}]: Starting task timer for {timespan} ending at time: {time}.", DateTime.Now, Period, StopTimeUtc.ToLocalTime());
 
         if (!cancellationTokenSource.IsCancellationRequested)
         {
+            await notifier.Update("timerStarted", (int)Period.TotalSeconds);
             try
             {
                 if (await timer.WaitForNextTickAsync(cancellationTokenSource.Token))
@@ -54,15 +73,35 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         }
     }
 
-    public void Cancel()
+    public async Task SkipAsync()
     {
+        if (IsRunning && DateTime.UtcNow < StopTimeUtc)
+            // change stop time for current timer to UTC now for state managmenet
+            StopTimeUtc = DateTime.UtcNow;
+
+        // stop and clear any time remaining
+        timer?.Dispose();
+
+        elapsedCount++;
+        await notifier.Update("elapsedCount", elapsedCount);
+    }
+
+    public async Task CancelAsync()
+    {
+        // cancel the timer using class cancellation token source
         try
         {
-            cancellationTokenSource.Cancel();
+            await cancellationTokenSource.CancelAsync();
+        }
+        catch (OperationCanceledException ex)
+        {
+            LogExceptionMessage(ex);
         }
         catch (Exception ex)
         {
+            // log and rethrow on unknown exceptions
             LogExceptionMessage(ex);
+            throw;
         }
     }
 }

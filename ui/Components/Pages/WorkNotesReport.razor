@@ -7,7 +7,7 @@
 
 <h1>Work Notes Report Grid</h1>
 <QuickGrid Items="workNotes">
-    <PropertyColumn Property="@(w => w.RecordedAtTime.ToLocalTime())" Title="Time" />
+    <PropertyColumn Property="@(w => w.RecordedAtTimeUtc.ToLocalTime())" Title="Time" />
     <PropertyColumn Property="@(w => w.Description)" Title="Description" />
 </QuickGrid>
 
@@ -22,7 +22,7 @@
         if (context != null)
         {
             workNotes = context.WorkNote
-                .OrderBy(x => x.RecordedAtTime);
+                .OrderBy(x => x.RecordedAtTimeUtc);
         }
     }
 

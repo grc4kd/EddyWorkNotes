@@ -10,6 +10,9 @@ This setup is not sufficient for production mode security, but it is a good test
 
 # Web App w/ Local Database Container
 ```powershell
+# set dev cert password in environment variable first
+$env:DEV_CERT_PASSWORD=(Read-Host -MaskInput -Prompt "Please enter your password now")
+
 docker run --rm -it `
     --network eddy-postgres_default `
     -e "EDDY_POSTGRES_HOST=eddy-postgres-db-1" `

@@ -1,17 +1,8 @@
 namespace ui.Components.Models;
 
-public record TimerSession(string Message, TimeSpan Period, string? WorkNotes)
+public record TimerSession(string Message, DateTime CompletedAtUtc, string? WorkNotes)
 {
-    private DateTime CompletedAtUtc = DateTime.UtcNow;
-    public DateTime CompletedAt
-    {
-        get
-        {
-            return CompletedAtUtc;
-        }
-        set
-        {
-            CompletedAtUtc = value.ToUniversalTime();
-        }
-    }
+    public TimerSession(DataEntities.WorkNote workNote) : this("Work", workNote.RecordedAtTimeUtc.ToUniversalTime(), workNote.Description) { }
+
+    public DateTime CompletedAtLocaltime = CompletedAtUtc.ToLocalTime();
 }

@@ -35,11 +35,11 @@ namespace ui.Migrations
                         .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "description");
 
-                    b.Property<DateTime>("RecordedAtTime")
+                    b.Property<DateTime>("RecordedAtTimeUtc")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("now()")
-                        .HasAnnotation("Relational:JsonPropertyName", "recordedAtTime");
+                        .HasAnnotation("Relational:JsonPropertyName", "recordedAtTimeUtc");
 
                     b.HasKey("Id");
 

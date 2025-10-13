@@ -12,7 +12,7 @@ using ui.Data;
 namespace ui.Migrations
 {
     [DbContext(typeof(EddyWorkNotesContext))]
-    [Migration("20251011165048_InitialCreate")]
+    [Migration("20251013050428_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -38,9 +38,11 @@ namespace ui.Migrations
                         .HasColumnType("text")
                         .HasAnnotation("Relational:JsonPropertyName", "description");
 
-                    b.Property<DateTime>("RecordedAtTime")
+                    b.Property<DateTime>("RecordedAtTimeUtc")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasAnnotation("Relational:JsonPropertyName", "recordedAtTime");
+                        .HasDefaultValueSql("now()")
+                        .HasAnnotation("Relational:JsonPropertyName", "recordedAtTimeUtc");
 
                     b.HasKey("Id");
 

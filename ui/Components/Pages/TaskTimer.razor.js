@@ -41,11 +41,11 @@ function tick() {
 
     // stop at 1 second left on the clock (next tick updates to 0)
     if (remainingTimeSeconds <= 0) {
-        stop();
+        pause();
     }
 }
 
-export function stop() {
+export function pause() {
     if (intervalId){
         clearInterval(intervalId);
     }
@@ -53,7 +53,7 @@ export function stop() {
 
 export function run(durationSeconds) {
     // stop any other timers and run this new timer by itself
-    stop()
+    pause()
 
     // the first timer update is immediate
     updateDisplay(durationSeconds);

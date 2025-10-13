@@ -26,8 +26,8 @@ else
                 <input type="hidden" name="WorkNote.Id" value="@WorkNote.Id" />
                 <div class="mb-3">
                     <label for="recordedattime" class="form-label">RecordedAtTime:</label>
-                    <InputDate id="recordedattime" @bind-Value="WorkNote.RecordedAtTime" class="form-control" />
-                    <ValidationMessage For="() => WorkNote.RecordedAtTime" class="text-danger" />
+                    <InputDate id="recordedattime" @bind-Value="WorkNote.RecordedAtTimeUtc" class="form-control" />
+                    <ValidationMessage For="() => WorkNote.RecordedAtTimeUtc" class="text-danger" />
                 </div>
                 <div class="mb-3">
                     <label for="description" class="form-label">Description:</label>

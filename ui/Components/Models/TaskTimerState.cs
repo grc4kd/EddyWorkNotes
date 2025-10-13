@@ -1,6 +1,6 @@
 namespace ui.Components.Models;
 
-public record TaskTimerState(string TimerStatus)
+public record TaskTimerState(string TimerStatus = TaskTimerStateValue.Stopped)
 {
     public bool IsStopped => TimerStatus == TaskTimerStateValue.Stopped;
     public bool IsRunning => TimerStatus == TaskTimerStateValue.Running;

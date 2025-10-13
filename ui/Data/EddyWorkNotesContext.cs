@@ -10,7 +10,7 @@ namespace ui.Data
         {
             modelBuilder
                 .Entity<WorkNote>()
-                .Property(e => e.RecordedAtTime)
+                .Property(e => e.RecordedAtTimeUtc)
                 .HasDefaultValueSql("now()");
         }
     }
