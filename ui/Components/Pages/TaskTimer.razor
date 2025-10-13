@@ -5,7 +5,6 @@
 @using Markdig.Parsers
 @using Markdig.Renderers
 @using Microsoft.EntityFrameworkCore
-@using Microsoft.IdentityModel.Tokens
 @using ui.Components.Models
 @using ui.Data
 @rendermode InteractiveServer
@@ -121,7 +120,7 @@
 
     // primitive type state variables
     public string CurrentPhase { get; set; } = "";
-    public string LastCycleCompletedAt => completedSessions.Any() ? completedSessions.Last().CompletedAtLocaltime.ToLongTimeString()
+    public string LastCycleCompletedAt => Sessions.Any() ? Sessions.Last().CompletedAtLocaltime.ToLongTimeString()
     : "(no time recorded)";
     private int Elapsed = 0;
     private int CurrentWorkCycle = 0;
@@ -134,19 +133,10 @@
 
     private MarkdownPipeline? MarkdownPipeline { get; set; }
 
-    protected async override Task OnInitializedAsync()
-    {
-        var task = module?.InvokeVoidAsync("init");
-
-        if (task != null)
-        {
-            await task.GetValueOrDefault();
-        }
-    }
-
     protected override void OnInitialized()
     {
         Model ??= new WorkNote();
+
         MarkdownPipeline ??= MarkdownPipelineBuilder
         .UseDefinitionLists()
         .UseEmphasisExtras()
@@ -160,7 +150,7 @@
         .Build();
     }
 
-    protected async override Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         // setup javascript interop
         if (firstRender && module is null)
@@ -168,7 +158,8 @@
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
         }
 
-        if (firstRender)
+        // setup timer events to update page state on notifications
+        if (firstRender && NotifierService is not null)
         {
             Func<string, int, Task>? subscriber = async (a, b) =>
             {
@@ -177,13 +168,26 @@
             };
 
             NotifierService.Notify += subscriber;
+        }
 
-            if (!completedSessions.Any())
-            {
-                completedSessions = EddyWorkNotesContext.WorkNote.OrderDescending()
-                    .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
-                    .Select(w => new TimerSession(w));
-            }
+        // load initial work notes history from database
+        if (!Sessions.Any())
+        {
+            Sessions = EddyWorkNotesContext.WorkNote.OrderDescending()
+                        .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
+                        .Select(w => new TimerSession(w))
+                        .ToList();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Sessions.Any())
+        {
+            Sessions = await EddyWorkNotesContext.WorkNote.OrderDescending()
+                        .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
+                        .Select(w => new TimerSession(w))
+                        .ToListAsync();
         }
     }
 
@@ -198,18 +202,21 @@
         string trimmedNotes = Model?.Description is not null ? trimNotes(Model) : string.Empty;
         string parsedNotes = trimmedNotes.Length > 0 ? parseNotes(trimmedNotes) : string.Empty;
 
-        if (Model != null && !isInputBlank && completedSessions.All(s => s.WorkNotes?.Trim() != trimmedNotes))
+        if (Model != null && !isInputBlank && Sessions.All(s => s.WorkNotes?.Trim() != trimmedNotes))
         {
             Logger.LogInformation("Work notes submitted.\n{parsedNotes}", trimmedNotes);
 
             var session = new TimerSession("Work", DateTime.UtcNow, trimmedNotes);
-
-            EddyWorkNotesContext.WorkNote.Add(new DataEntities.WorkNote
-            {
+            var workNote = new DataEntities.WorkNote {
                 Description = trimmedNotes,
                 RecordedAtTimeUtc = session.CompletedAtUtc
-            });
+            };
+
+            EddyWorkNotesContext.WorkNote.Add(workNote);
             EddyWorkNotesContext.SaveChanges();
+
+            // add notes to current session without reloading the page on inserting the last note
+            Sessions = Sessions.Prepend(session).ToList();
 
             // clear the active notes once completed session notes are stored
             Model!.Description = "";
