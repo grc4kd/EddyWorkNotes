@@ -120,8 +120,18 @@
 
     // primitive type state variables
     public string CurrentPhase { get; set; } = "";
-    public string LastCycleCompletedAt => Sessions.Any() ? Sessions.Last().CompletedAtLocaltime.ToLongTimeString()
-    : "(no time recorded)";
+    public string LastCycleCompletedAt
+    {
+        get
+        {
+            if (Sessions.Any())
+                return Sessions.OrderByDescending(k => k.CompletedAtUtc)
+                    .First().CompletedAtLocaltime.ToLongTimeString();
+            else
+                return "(no time recorded)";
+        }
+    }
+
     private int Elapsed = 0;
     private int CurrentWorkCycle = 0;
     private string HideToast => CurrentPhase == "Break" ? "show" : "hide";
@@ -174,9 +184,9 @@
         if (!Sessions.Any())
         {
             Sessions = EddyWorkNotesContext.WorkNote.OrderDescending()
-                        .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
-                        .Select(w => new TimerSession(w))
-                        .ToList();
+            .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
+            .Select(w => new TimerSession(w))
+            .ToList();
         }
     }
 
@@ -185,9 +195,9 @@
         if (!Sessions.Any())
         {
             Sessions = await EddyWorkNotesContext.WorkNote.OrderDescending()
-                        .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
-                        .Select(w => new TimerSession(w))
-                        .ToListAsync();
+            .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
+            .Select(w => new TimerSession(w))
+            .ToListAsync();
         }
     }
 
@@ -207,7 +217,8 @@
             Logger.LogInformation("Work notes submitted.\n{parsedNotes}", trimmedNotes);
 
             var session = new TimerSession("Work", DateTime.UtcNow, trimmedNotes);
-            var workNote = new DataEntities.WorkNote {
+            var workNote = new DataEntities.WorkNote
+            {
                 Description = trimmedNotes,
                 RecordedAtTimeUtc = session.CompletedAtUtc
             };
