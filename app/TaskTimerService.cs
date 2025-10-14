@@ -78,8 +78,6 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         }
     }
 
-    public void Cancel() => _ = Task.Run(CancelAsync);
-
     public async Task CancelAsync()
     {
         // cancel the timer using class cancellation token source
