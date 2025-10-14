@@ -34,8 +34,7 @@
         </div>
         <p>Current Phase: @CurrentPhase</p>
         <p>Status: @CurrentState</p>
-        <button @onclick="StartTimer" class="btn btn-primary" disabled="@StartDisabled">Start</button>
-        <button @onclick="SkipTimer" class="btn btn-secondary" disabled="@SkipDisabled">Skip</button>
+        <button @onclick="StartTimer" class="btn btn-primary" disabled="@TaskTimerService.IsRunning">Start</button>
     </div>
 
     <div class="card-body container-sm">
@@ -94,11 +93,13 @@
 
 <!-- this toast is hidden by default, and controlled by CSS classes 'show' and 'hide' -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div id="toastNotification" class="toast @(ShowToast ? "show" : "hide")" role="alert" aria-live="assertive" aria-atomic="true">
+    <div id="toastNotification" class="toast @(ShowToast ? "show" : "hide")" role="alert" aria-live="assertive"
+        aria-atomic="true">
         <div class="toast-header">
             <strong class="me-auto">Task Timer</strong>
             <small>Cycle complete: @LastCycleCompletedAt</small>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" @onclick="() => ShowToast = false" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" @onclick="() => ShowToast = false"
+                aria-label="Close"></button>
         </div>
         <div class="toast-body">
             On a short break for <em>@(options.BreakTimeSpan.TotalMinutes)</em> minutes. Be right back!
@@ -118,14 +119,14 @@
     private List<TimerSession> Sessions = [];
 
     // primitive type state variables
-    public string CurrentPhase { get; set; } = "";
+    public string CurrentPhase => TaskTimerService.CurrentPhase;
     public string LastCycleCompletedAt
     {
         get
         {
             if (Sessions.Any())
                 return Sessions.OrderByDescending(k => k.CompletedAtUtc)
-                    .First().CompletedAtLocaltime.ToLongTimeString();
+                .First().CompletedAtLocaltime.ToLongTimeString();
             else
                 return "(no time recorded)";
         }
@@ -180,16 +181,15 @@
         }
 
         // load initial work notes history from database
-        if (!Sessions.Any())
-        {
-            Sessions = EddyWorkNotesContext.WorkNote.OrderDescending()
-            .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
-            .Select(w => new TimerSession(w))
-            .ToList();
-        }
+        await LoadSessions();
     }
 
     protected override async Task OnParametersSetAsync()
+    {
+        await LoadSessions();
+    }
+
+    private async Task LoadSessions()
     {
         if (!Sessions.Any())
         {
@@ -320,10 +320,7 @@
 
     public async Task StartTimer()
     {
-        var cts = TaskTimerService.cancellationTokenSource;
-
-        CurrentPhase = "Work";
-        CurrentState = TaskTimerState.Running;
+        Elapsed = 0;
         StateHasChanged();
 
         var cts = TaskTimerService.cancellationTokenSource;
@@ -338,25 +335,15 @@
                 await HandleCycleAsync(options.BreakTimeSpan, "Break");
             }
 
-            TimerCycleService.Cycle++;
-        }
-    }
-
-    public async Task SkipTimer() {
-        module?.InvokeVoidAsync("pause");
         StateHasChanged();
-
-        await TaskTimerService.SkipAsync();
     }
 
     private async Task HandleCycleAsync(TimeSpan cycleTime, string phase)
     {
         ArgumentOutOfRangeException.ThrowIfNullOrWhiteSpace(phase);
 
+        // trigger JavaScript method before calling timer service async / triggering re-render
         module?.InvokeVoidAsync("run", cycleTime.TotalSeconds);
-        StateHasChanged();
-
-        module?.InvokeVoidAsync("run", TimeRemaining.TotalSeconds);
-        await TaskTimerService.StartAsync(TimeRemaining);
+        await TaskTimerService.StartAsync(cycleTime, phase);
     }
 }

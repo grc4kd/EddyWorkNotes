@@ -170,5 +170,28 @@ namespace test
             Assert.True(result > TimeSpan.Zero);
             Assert.True(result <= period);
         }
+
+        [Fact]
+        public async Task Start_Should_UpdateTimerState()
+        {
+            // Arrange
+            var loggerMock = new Mock<ILogger<TaskTimerService>>();
+            var notifierMock = new Mock<NotifierService>();
+            var taskTimerService = new TaskTimerService(loggerMock.Object, notifierMock.Object);
+
+            var workTime = TimeSpan.FromMinutes(1);
+            var phase = "Work";
+
+            // Act
+            var task = taskTimerService.StartAsync(workTime, phase);
+
+            // Assert
+            Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
+            Assert.Equal(phase, taskTimerService.CurrentPhase);
+            Assert.True(taskTimerService.IsRunning);
+
+            // Cancel running timer after test assertions
+            taskTimerService.Cancel();
+        }
     }
 }

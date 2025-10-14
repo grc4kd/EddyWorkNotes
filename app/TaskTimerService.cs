@@ -4,11 +4,12 @@ namespace Eddy;
 
 public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService notifier)
 {
-    private PeriodicTimer? timer;
+    private readonly ILogger<TaskTimerService> logger = logger;
+    private readonly NotifierService notifier = notifier;
     public readonly CancellationTokenSource cancellationTokenSource = new();
     private int elapsedCount = 0;
 
-    public bool IsRunning => StopTimeUtc > DateTime.UtcNow;
+    public bool IsRunning { get; private set; }
     public string CurrentPhase { get; private set; } = string.Empty;
     public TimeSpan TimeRemaining
     {
@@ -30,9 +31,10 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
     public async Task StartAsync(TimeSpan Period, string Phase)
     {
         CurrentPhase = Phase;
+        IsRunning = true;
         StopTimeUtc = DateTime.UtcNow.Add(Period);
 
-        timer = new PeriodicTimer(Period);
+        using var timer = new PeriodicTimer(Period);
 
         logger.LogInformation("Time/Now[{now}]: Starting task timer for {timespan} ending at time: {time}.", DateTime.Now, Period, StopTimeUtc.ToLocalTime());
 
@@ -54,6 +56,9 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         }
 
         logger.LogInformation("Timer finished running at local time: {now}", DateTime.Now);
+
+        IsRunning = false;
+        CurrentPhase = $"Stopped after {elapsedCount} timers elapsed.";
     }
 
     private void LogExceptionMessage(Exception ex, LogLevel logLevel = LogLevel.Error)
@@ -91,7 +96,13 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         // cancel the timer using class cancellation token source
         try
         {
-            await cancellationTokenSource.CancelAsync();
+            cancellationTokenSource.Cancel();
+            IsRunning = false;
+        }
+        catch (OperationCanceledException ex)
+        {
+            LogExceptionMessage(ex);
+            IsRunning = false;
         }
         catch (OperationCanceledException ex)
         {
