@@ -108,6 +108,7 @@ namespace test
         public async Task UpdateTimeAsync_WhenWorkTime_ShouldNotDecreaseRemainingTime()
         {
             // Given
+            int expectedSeconds = 1500;
             var notifier = new NotifierService();
             var timer = new TaskTimerService(_loggerMock.Object, notifier);
             string result = string.Empty;
@@ -115,13 +116,13 @@ namespace test
             notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
 
             // When
-            var task = timer.StartAsync(TimeSpan.FromMinutes(25), "Work");
+            var task = timer.StartAsync(TimeSpan.FromSeconds(expectedSeconds), "Work");
             await Task.Yield();
 
             // Then
             // Timer should have original state, period has not elapsed
             Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
-            Assert.Equal(string.Empty, result);
+            Assert.Equal($"timerStarted {expectedSeconds}", result);
         }
 
         [Fact]

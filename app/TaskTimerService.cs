@@ -56,8 +56,6 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         }
 
         logger.LogInformation("Timer finished running at local time: {now}", DateTime.Now);
-
-        CurrentPhase = $"Stopped after {elapsedCount} timers elapsed.";
     }
 
     private void LogExceptionMessage(Exception ex, LogLevel logLevel = LogLevel.Error)
@@ -77,13 +75,17 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         }
     }
 
-    public void Skip()
+    public async Task SkipAsync()
     {
         if (IsRunning && DateTime.UtcNow < StopTimeUtc)
             // change stop time for current timer to UTC now for state managmenet
             StopTimeUtc = DateTime.UtcNow;
-            // stop and clear any time remaining
-            timer?.Dispose();
+
+        // stop and clear any time remaining
+        timer?.Dispose();
+
+        elapsedCount++;
+        await notifier.Update("elapsedCount", elapsedCount);
     }
 
     public async Task CancelAsync()

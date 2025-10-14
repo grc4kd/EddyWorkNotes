@@ -34,8 +34,8 @@
         </div>
         <p>Current Phase: @CurrentPhase</p>
         <p>Status: @CurrentState</p>
-        <button @onclick="StartTimer" class="btn btn-primary" disabled="@TaskTimerService.IsRunning">Start</button>
-        <button @onclick="SkipTimer" class="btn btn-secondary" disabled="@(!TaskTimerService.IsRunning || DateTime.UtcNow >= TaskTimerService.StopTimeUtc)">Skip</button>
+        <button @onclick="StartTimer" class="btn btn-primary" disabled="@StartDisabled">Start</button>
+        <button @onclick="SkipTimer" class="btn btn-secondary" disabled="@SkipDisabled">Skip</button>
     </div>
 
     <div class="card-body container-sm">
@@ -158,12 +158,6 @@
         .UseTaskLists()
         .UseGenericAttributes()
         .Build();
-
-        // setup timer events to update page state on notifications
-        subscriber = async (a, b) =>
-        {
-            await Task.FromResult(StateHasChanged);
-        };
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -174,13 +168,17 @@
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
         }
 
-        NotifierService.Notify += subscriber;
-
         // load initial work notes history from database
         await LoadSessions();
-    }
 
-    private Func<string, int, Task>? subscriber;
+        // attach an event handler for notifications from the timer service
+        NotifierService.Notify += async (msg, val) =>
+        {
+            if (msg == "timerStarted") {
+                await InvokeAsync(StateHasChanged);
+            }
+        };
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -213,9 +211,31 @@
                 await TaskTimerService.CancelAsync().ConfigureAwait(false);
             }
         }
+    }
 
-        // remove subscriber on dipose to close notifications stream for user request
-        NotifierService.Notify -= subscriber;
+    private bool StartDisabled {
+        get {
+            if (TaskTimerService.IsRunning) {
+                return true;
+            }
+
+            if (CurrentWorkCycle >= WorkCycles) {
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    private bool SkipDisabled {
+        get {
+            if (!TaskTimerService.IsRunning)
+            {
+                return true;
+            }
+
+            return false;
+        }
     }
 
     /// <summary>
@@ -272,14 +292,20 @@
         }
     }
 
-    public void SkipTimer() => TaskTimerService.Skip();
+    public async Task SkipTimer() {
+        module?.InvokeVoidAsync("pause");
+        StateHasChanged();
+
+        await TaskTimerService.SkipAsync();
+    }
 
     private async Task HandleCycleAsync(TimeSpan cycleTime, string phase)
     {
         ArgumentOutOfRangeException.ThrowIfNullOrWhiteSpace(phase);
 
-        // trigger JavaScript method before calling timer service async / triggering re-render
         module?.InvokeVoidAsync("run", cycleTime.TotalSeconds);
+        StateHasChanged();
+
         await TaskTimerService.StartAsync(cycleTime, phase);
     }
 }
