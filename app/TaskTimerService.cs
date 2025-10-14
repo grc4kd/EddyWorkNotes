@@ -78,34 +78,25 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         }
     }
 
-    public async Task SkipAsync()
-    {
-        if (IsRunning && DateTime.UtcNow < StopTimeUtc)
-            // change stop time for current timer to UTC now for state managmenet
-            StopTimeUtc = DateTime.UtcNow;
-
-        // stop and clear any time remaining
-        timer?.Dispose();
-
-        elapsedCount++;
-        await notifier.Update("elapsedCount", elapsedCount);
-    }
+    public void Cancel() => _ = Task.Run(CancelAsync);
 
     public async Task CancelAsync()
     {
         // cancel the timer using class cancellation token source
         try
         {
-            cancellationTokenSource.Cancel();
+            await cancellationTokenSource.CancelAsync();
             IsRunning = false;
         }
         catch (OperationCanceledException ex)
         {
+            // update state flags when timer is cancelled by exception
             LogExceptionMessage(ex);
             IsRunning = false;
         }
         catch (OperationCanceledException ex)
         {
+            // preserve state on unexpected exception subtypes
             LogExceptionMessage(ex);
         }
         catch (Exception ex)

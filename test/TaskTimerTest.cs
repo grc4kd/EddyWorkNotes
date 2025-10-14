@@ -66,7 +66,7 @@ public class TaskTimerServiceTest
 
         // When - Start and immediately cancel
         var task = timer.StartAsync(TimeSpan.FromMinutes(25), "Work");
-        timer.Cancel();
+        await timer.CancelAsync();
         await task;
 
         // Then
@@ -86,7 +86,7 @@ public class TaskTimerServiceTest
 
         // When - Start and immediately cancel
         var task = timer.StartAsync(TimeSpan.FromMinutes(25), "");
-        timer.Cancel();
+        await timer.CancelAsync();
         await task;
 
         // Then
