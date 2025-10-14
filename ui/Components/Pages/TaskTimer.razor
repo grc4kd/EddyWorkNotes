@@ -35,6 +35,7 @@
         <p>Current Phase: @CurrentPhase</p>
         <p>Status: @CurrentState</p>
         <button @onclick="StartTimer" class="btn btn-primary" disabled="@TaskTimerService.IsRunning">Start</button>
+        <button @onclick="SkipTimer" class="btn btn-secondary" disabled="@(!TaskTimerService.IsRunning || DateTime.UtcNow >= TaskTimerService.StopTimeUtc)">Skip</button>
     </div>
 
     <div class="card-body container-sm">
@@ -132,7 +133,6 @@
         }
     }
 
-    private int Elapsed = 0;
     private int CurrentWorkCycle = 0;
     private bool ShowToast = false;
 
@@ -158,6 +158,12 @@
         .UseTaskLists()
         .UseGenericAttributes()
         .Build();
+
+        // setup timer events to update page state on notifications
+        subscriber = async (a, b) =>
+        {
+            await Task.FromResult(StateHasChanged);
+        };
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -168,21 +174,13 @@
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
         }
 
-        // setup timer events to update page state on notifications
-        if (firstRender && NotifierService is not null)
-        {
-            Func<string, int, Task>? subscriber = async (a, b) =>
-            {
-                Elapsed++;
-                await Task.CompletedTask;
-            };
-
-            NotifierService.Notify += subscriber;
-        }
+        NotifierService.Notify += subscriber;
 
         // load initial work notes history from database
         await LoadSessions();
     }
+
+    private Func<string, int, Task>? subscriber;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -200,44 +198,6 @@
         }
     }
 
-    /// <summary>
-    /// Process form submission and update completed work notes. Do not submit empty notes or duplicate notes.
-    /// Trim notes before comparison, but submit all data previously validated in the EditForm.
-    /// </summary>
-    private void Submit()
-    {
-        bool isInputBlank = (Model == null || string.IsNullOrWhiteSpace(Model?.Description));
-
-        string trimmedNotes = Model?.Description is not null ? trimNotes(Model) : string.Empty;
-        string parsedNotes = trimmedNotes.Length > 0 ? parseNotes(trimmedNotes) : string.Empty;
-
-        if (Model != null && !isInputBlank && Sessions.All(s => s.WorkNotes?.Trim() != trimmedNotes))
-        {
-            Logger.LogInformation("Work notes submitted.\n{parsedNotes}", trimmedNotes);
-
-            var session = new TimerSession("Work", DateTime.UtcNow, trimmedNotes);
-            var workNote = new DataEntities.WorkNote
-            {
-                Description = trimmedNotes,
-                RecordedAtTimeUtc = session.CompletedAtUtc
-            };
-
-            EddyWorkNotesContext.WorkNote.Add(workNote);
-            EddyWorkNotesContext.SaveChanges();
-
-            // add notes to current session without reloading the page on inserting the last note
-            Sessions = Sessions.Prepend(session).ToList();
-
-            // clear the active notes once completed session notes are stored
-            Model!.Description = "";
-        }
-    }
-
-    static string trimNotes(IWorkNotes notes) => (notes != null && !string.IsNullOrWhiteSpace(notes.Description)) ?
-    notes!.Description!.Trim() : string.Empty;
-
-    string parseNotes(string markdown) => Markdown.ToHtml(markdown, MarkdownPipeline);
-
     public async ValueTask DisposeAsync()
     {
         if (module is not null)
@@ -253,31 +213,9 @@
                 await TaskTimerService.CancelAsync().ConfigureAwait(false);
             }
         }
-    }
 
-    private bool StartDisabled {
-        get {
-            if (TaskTimerService.IsRunning) {
-                return true;
-            }
-
-            if (TimerCycleService.Cycle >= WorkCycles) {
-                return true;
-            }
-
-            return false;
-        }
-    }
-
-    private bool SkipDisabled {
-        get {
-            if (!TaskTimerService.IsRunning)
-            {
-                return true;
-            }
-
-            return false;
-        }
+        // remove subscriber on dipose to close notifications stream for user request
+        NotifierService.Notify -= subscriber;
     }
 
     /// <summary>
@@ -320,9 +258,6 @@
 
     public async Task StartTimer()
     {
-        Elapsed = 0;
-        StateHasChanged();
-
         var cts = TaskTimerService.cancellationTokenSource;
 
         while (CurrentWorkCycle < WorkCycles && !cts.IsCancellationRequested)
@@ -334,9 +269,10 @@
             {
                 await HandleCycleAsync(options.BreakTimeSpan, "Break");
             }
-
-        StateHasChanged();
+        }
     }
+
+    public void SkipTimer() => TaskTimerService.Skip();
 
     private async Task HandleCycleAsync(TimeSpan cycleTime, string phase)
     {
