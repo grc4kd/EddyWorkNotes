@@ -1,9 +1,11 @@
 @page "/tasktimer"
 @using System.Threading.Tasks
 @using System.Reflection
+@using Eddy.Requests
 @using Markdig
 @using Markdig.Parsers
 @using Markdig.Renderers
+@using Microsoft.CodeAnalysis.CSharp.Syntax
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.IdentityModel.Tokens
 @using ui.Components.Models
@@ -12,11 +14,11 @@
 @implements IAsyncDisposable
 
 @inject IJSRuntime JS
-@inject TaskTimerService Timer
 @inject NotifierService Notifier
 @inject ILogger<TaskTimer> Logger
 @inject MarkdownPipelineBuilder MarkdownPipelineBuilder
 @inject EddyWorkNotesContext EddyWorkNotesContext
+@inject TaskTimerService Timer
 @inject TimerCycleService TimerCycle
 
 <PageTitle>Task Timer</PageTitle>
@@ -32,8 +34,9 @@
                 <div id='timerDisplay' class="mb-3">@(TimeRemaining.ToString(@"mm\:ss")) remaining</div>
             </div>
         </div>
-        <p>Current Phase: @(Timer.CurrentPhase)</p>
+        <p>Current Phase: @(CurrentPhase)</p>
         <p>Status: @(CurrentState)</p>
+        <p>Current Cycle: @(TimerCycle.CycleCount)</p>
         <button @onclick="StartTimer" class="btn btn-primary" disabled="@StartDisabled">Start</button>
         <button @onclick="SkipTimer" class="btn btn-secondary" disabled="@SkipDisabled">Skip</button>
     </div>
@@ -46,13 +49,14 @@
 
                 <div class="row">
                     <label>
-                        @if (Timer.IsRunning && CurrentPhase == "Work")
+                        @if (Timer.IsRunning)
                         {
-                            <p>Note (cycle @(TimerCycle.Cycle) of @CycleCount)</p>
+                            <h2>@TimerCycle.CurrentCycleName</h2>
+                            <p>Duration: @TimerCycle.CurrentCycleTime</p>
                         }
                         else
                         {
-                            <p><u>work timer off</u></p>
+                            <p><u>timer is not running</u></p>
                         }
                         <div class="row">
                             <InputTextArea @bind-Value="Model!.Description" />
@@ -109,18 +113,20 @@
 </div>
 
 @code {
-    // Razor Page constant variables
-    private const int CycleCount = 4;
+    /// <summary>
+    /// Target number of work cycles to loop through. 4 for standard Pomodoro technique.
+    /// </summary>
+    private const int TargetLoopCount = 4;
 
     // DTOs and model class reference types
     public TimeSpan TimeRemaining => Timer.TimeRemaining;
     private TaskTimerOptions options = new();
     private IJSObjectReference? module;
-    public TaskTimerState? CurrentState => Timer.IsRunning ? TaskTimerState.Running : TaskTimerState.Stopped; 
+    public TaskTimerState? CurrentState => Timer.IsRunning ? TaskTimerState.Running : TaskTimerState.Stopped;
     private List<TimerSession> Sessions = [];
 
-    // primitive type state variables
-    public string CurrentPhase = string.Empty;
+    public string CurrentPhase { get; set; } = string.Empty;
+
     public string LastCycleCompletedAt
     {
         get
@@ -157,9 +163,6 @@
         .UseGenericAttributes()
         .Build();
 
-        TimerCycle.Cycle = 0;
-        CurrentPhase = Timer.CurrentPhase;
-
         // attach an event handler for notifications from the timer service
         Notifier.Notify += OnNotify;
 
@@ -172,6 +175,14 @@
         {
             StateHasChanged();
         });
+
+        if (key == "timerStarted") {
+            module?.InvokeVoidAsync("run", value);
+        }
+
+        if (key == "elapsedCount") {
+            module?.InvokeVoidAsync("pause");
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -205,8 +216,6 @@
     {
         if (module is not null)
         {
-            Timer.Pause();
-
             try
             {
                 await module.DisposeAsync();
@@ -214,18 +223,27 @@
             catch (JSDisconnectedException)
             {
                 // Handle exceptions if client JS module is disconnected
-                Logger.LogWarning("JavaScript module disconnected with time remaining: {TimeRemaining} minutes", Timer.TimeRemaining.TotalMinutes);
+                Logger.LogWarning("JavaScript module disconnected with time remaining: {TimeRemaining} minutes",
+                Timer.TimeRemaining.TotalMinutes);
             }
+        }
+
+        if (Timer.IsRunning) {
+            await Timer.CancelAsync();
         }
     }
 
-    private bool StartDisabled {
-        get {
-            if (Timer.IsRunning) {
+    private bool StartDisabled
+    {
+        get
+        {
+            if (Timer.IsRunning)
+            {
                 return true;
             }
 
-            if (TimerCycle.Cycle >= CycleCount) {
+            if (TimerCycle.CycleCount >= TargetLoopCount)
+            {
                 return true;
             }
 
@@ -233,15 +251,7 @@
         }
     }
 
-    private bool SkipDisabled {
-        get {
-            if (Timer.IsRunning && TimerCycle.Cycle <= CycleCount) {
-                return false;
-            }
-            
-            return true;
-        }
-    }
+    private bool SkipDisabled => !Timer.IsRunning;
 
     /// <summary>
     /// Process form submission and update completed work notes. Do not submit empty notes or duplicate notes.
@@ -259,11 +269,7 @@
             Logger.LogInformation("Work notes submitted.\n{parsedNotes}", trimmedNotes);
 
             var session = new TimerSession("Work", DateTime.UtcNow, trimmedNotes);
-            var workNote = new DataEntities.WorkNote
-            {
-                Description = trimmedNotes,
-                RecordedAtTimeUtc = session.CompletedAtUtc
-            };
+            var workNote = new DataEntities.WorkNote(trimmedNotes);
 
             EddyWorkNotesContext.WorkNote.Add(workNote);
             EddyWorkNotesContext.SaveChanges();
@@ -283,36 +289,36 @@
 
     public async Task StartTimer()
     {
-        var cts = Timer.cancellationTokenSource;
+        int loopCount = 2 * TargetLoopCount;
 
-        while (TimerCycle.Cycle < CycleCount && !cts.IsCancellationRequested)
+        // skip the last break timer cycle (run until loopCount-1)
+        while (TimerCycle.CycleCount < (loopCount - 1))
         {
-            TimerCycle.Cycle++;
-
-            await HandleCycleAsync(options.WorkTimeSpan, "Work");
-
-            // skip the last break timer
-            if (TimerCycle.Cycle < CycleCount && !cts.IsCancellationRequested)
-            {
-                await HandleCycleAsync(options.BreakTimeSpan, "Break");
-            }
+            // handle page events with service data accessors
+            await HandleCycleAsync(TimerCycle.CurrentCycleTime, TimerCycle.CurrentCycleName);
         }
+
+        // update page to final state after all cycles
+        CurrentPhase = $"Ran {TimerCycle.CycleCount} cycles.";
+        //StateHasChanged();
     }
 
-    public async Task SkipTimer() {
+    public void SkipTimer()
+    {
         module?.InvokeVoidAsync("pause");
-        StateHasChanged();
 
-        await Timer.SkipAsync();
+        Timer.Skip();
     }
 
     private async Task HandleCycleAsync(TimeSpan cycleTime, string phase)
     {
         ArgumentOutOfRangeException.ThrowIfNullOrWhiteSpace(phase);
 
-        module?.InvokeVoidAsync("run", cycleTime.TotalSeconds);
-        StateHasChanged();
+        CurrentPhase = phase;
 
-        await Timer.StartAsync(cycleTime, phase);
+        TaskTimerRequest request = new(cycleTime);
+        await Timer.StartAsync(request);
+
+        TimerCycle.Next();
     }
 }

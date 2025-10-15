@@ -75,7 +75,8 @@ else
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!WorkNoteExists(WorkNote!.Id))
+            int? workNoteId = WorkNote!.Id;
+            if (workNoteId.HasValue && !WorkNoteExists(workNoteId.Value))
             {
                 NavigationManager.NavigateTo("notfound");
             }

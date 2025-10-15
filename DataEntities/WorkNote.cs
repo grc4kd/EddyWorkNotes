@@ -2,20 +2,18 @@ using System.Text.Json.Serialization;
 
 namespace DataEntities;
 
-public class WorkNote
+public record WorkNote(string Description = "",
+                       [property: JsonPropertyName("id")] int? Id = null!)
 {
-    [JsonPropertyName("id")]
-    public int Id { get; set; }
+    [property: JsonPropertyName("description")] 
+    public string? Description { get; set; } = Description;
 
-    [JsonPropertyName("recordedAtTimeUtc")]
-    public DateTime RecordedAtTimeUtc { get; set; }
-
-    [JsonPropertyName("description")]
-    public string? Description { get; set; }
+    [property: JsonPropertyName("recordedAtTimeUtc")]
+    public DateTime RecordedAtTimeUtc { get; set; } = DateTime.UtcNow;
 }
-
 
 [JsonSerializable(typeof(List<WorkNote>))]
 public sealed partial class WorkNoteSerializerContext : JsonSerializerContext
 {
+
 }
