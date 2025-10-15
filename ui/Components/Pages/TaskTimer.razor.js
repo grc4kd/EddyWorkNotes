@@ -5,13 +5,6 @@ let intervalId = null;
 let remainingTimeSeconds = 0;
 let isRunning = false;
 
-function init() {
-    intervalId = null;
-    remainingTimeSeconds = 0;
-    isRunning = false;
-    updateDisplay(0);
-}
-
 function updateDisplay(totalSeconds) {    
     const display = document.getElementById(elementId);
     if (display) {

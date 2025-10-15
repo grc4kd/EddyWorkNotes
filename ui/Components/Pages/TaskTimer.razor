@@ -29,11 +29,11 @@
         <div class="mb-2">
             <div class="mb-2" asp-for="timeRemaining">
                 Time Remaining
-                <div id='timerDisplay' class="mb-3">@TimeRemaining.ToString(@"mm\:ss") remaining</div>
+                <div id='timerDisplay' class="mb-3">@(TimeRemaining.ToString(@"mm\:ss")) remaining</div>
             </div>
         </div>
-        <p>Current Phase: @CurrentPhase</p>
-        <p>Status: @CurrentState</p>
+        <p>Current Phase: @(TaskTimerService.CurrentPhase)</p>
+        <p>Status: @(CurrentState)</p>
         <button @onclick="StartTimer" class="btn btn-primary" disabled="@StartDisabled">Start</button>
         <button @onclick="SkipTimer" class="btn btn-secondary" disabled="@SkipDisabled">Skip</button>
     </div>
@@ -48,7 +48,7 @@
                     <label>
                         @if (TaskTimerService.IsRunning && CurrentPhase == "Work")
                         {
-                            <p>Note (cycle @TimerCycleService.Cycle of @WorkCycles)</p>
+                            <p>Note (cycle @(TimerCycleService.Cycle) of @CycleCount)</p>
                         }
                         else
                         {
@@ -110,7 +110,7 @@
 
 @code {
     // Razor Page constant variables
-    private const int WorkCycles = 4;
+    private const int CycleCount = 4;
 
     // DTOs and model class reference types
     public TimeSpan TimeRemaining => TaskTimerService.TimeRemaining;
@@ -157,41 +157,35 @@
         .UseTaskLists()
         .UseGenericAttributes()
         .Build();
-    }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        // setup javascript interop
-        if (firstRender && module is null)
-        {
-            module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
-        }
-
-        // load initial work notes history from database
-        await LoadSessions();
+        TimerCycleService.Cycle = 0;
 
         // attach an event handler for notifications from the timer service
         NotifierService.Notify += async (msg, val) =>
         {
-            if (msg == "timerStarted") {
-                await InvokeAsync(StateHasChanged);
-            }
+            await InvokeAsync(StateHasChanged);
         };
+
+        LoadSessions();
     }
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await LoadSessions();
+        // ensure to only setup JS interop on first render
+        if (firstRender && module is null)
+        {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");            
+        }
     }
 
-    private async Task LoadSessions()
+    private void LoadSessions()
     {
         if (!Sessions.Any())
         {
-            Sessions = await EddyWorkNotesContext.WorkNote.OrderDescending()
+            Sessions = EddyWorkNotesContext.WorkNote.OrderDescending()
             .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
             .Select(w => new TimerSession(w))
-            .ToListAsync();
+            .ToList();
         }
     }
 
@@ -218,7 +212,7 @@
                 return true;
             }
 
-            if (TimerCycleService.Cycle >= WorkCycles) {
+            if (TimerCycleService.Cycle >= CycleCount) {
                 return true;
             }
 
@@ -228,12 +222,11 @@
 
     private bool SkipDisabled {
         get {
-            if (!TaskTimerService.IsRunning)
-            {
-                return true;
+            if (TaskTimerService.IsRunning && TimerCycleService.Cycle <= CycleCount) {
+                return false;
             }
-
-            return false;
+            
+            return true;
         }
     }
 
@@ -279,19 +272,17 @@
     {
         var cts = TaskTimerService.cancellationTokenSource;
 
-        // start with cycle 1
-        TimerCycleService.Cycle = 1;
-        while (TimerCycleService.Cycle < WorkCycles && !cts.IsCancellationRequested)
+        while (TimerCycleService.Cycle < CycleCount && !cts.IsCancellationRequested)
         {
+            TimerCycleService.Cycle++;
+
             await HandleCycleAsync(options.WorkTimeSpan, "Work");
-            
-            // if all but the last break cycle have raised elapsed events, skip the last break timer
-            if (TimerCycleService.Cycle < WorkCycles && !cts.IsCancellationRequested)
+
+            // skip the last break timer
+            if (TimerCycleService.Cycle < CycleCount && !cts.IsCancellationRequested)
             {
                 await HandleCycleAsync(options.BreakTimeSpan, "Break");
             }
-
-            TimerCycleService.Cycle++;
         }
     }
 

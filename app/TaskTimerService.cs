@@ -8,24 +8,10 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
     public readonly CancellationTokenSource cancellationTokenSource = new();
     private int elapsedCount = 0;
 
-    public bool IsRunning => StopTimeUtc > DateTime.UtcNow;
+    public bool IsRunning { get; private set; } = false;
     public string CurrentPhase { get; private set; } = string.Empty;
-    public TimeSpan TimeRemaining
-    {
-        get
-        {
-            if (!IsRunning)
-                return TimeSpan.Zero;
-
-            var timespan = StopTimeUtc - DateTime.UtcNow;
-            if (timespan > TimeSpan.Zero)
-                return timespan;
-            
-            return TimeSpan.Zero;
-        }
-    }
-
-    public DateTime StopTimeUtc { get; private set; }
+    public TimeSpan TimeRemaining => StopTimeUtc - DateTime.UtcNow;
+    public DateTime StopTimeUtc { get; private set; } = DateTime.UtcNow;
 
     public async Task StartAsync(TimeSpan Period, string Phase)
     {
@@ -38,7 +24,9 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
 
         if (!cancellationTokenSource.IsCancellationRequested)
         {
+            IsRunning = true;
             await notifier.Update("timerStarted", (int)Period.TotalSeconds);
+
             try
             {
                 if (await timer.WaitForNextTickAsync(cancellationTokenSource.Token))
@@ -75,13 +63,11 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
 
     public async Task SkipAsync()
     {
-        if (IsRunning && DateTime.UtcNow < StopTimeUtc)
-            // change stop time for current timer to UTC now for state managmenet
-            StopTimeUtc = DateTime.UtcNow;
-
         // stop and clear any time remaining
+        IsRunning = false;
         timer?.Dispose();
 
+        // update count and notification service
         elapsedCount++;
         await notifier.Update("elapsedCount", elapsedCount);
     }
