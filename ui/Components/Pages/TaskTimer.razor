@@ -133,7 +133,6 @@
         }
     }
 
-    private int CurrentWorkCycle = 0;
     private bool ShowToast = false;
 
     // EditForm variables
@@ -219,7 +218,7 @@
                 return true;
             }
 
-            if (CurrentWorkCycle >= WorkCycles) {
+            if (TimerCycleService.Cycle >= WorkCycles) {
                 return true;
             }
 
@@ -280,7 +279,9 @@
     {
         var cts = TaskTimerService.cancellationTokenSource;
 
-        while (CurrentWorkCycle < WorkCycles && !cts.IsCancellationRequested)
+        // start with cycle 1
+        TimerCycleService.Cycle = 1;
+        while (TimerCycleService.Cycle < WorkCycles && !cts.IsCancellationRequested)
         {
             await HandleCycleAsync(options.WorkTimeSpan, "Work");
             
@@ -289,6 +290,8 @@
             {
                 await HandleCycleAsync(options.BreakTimeSpan, "Break");
             }
+
+            TimerCycleService.Cycle++;
         }
     }
 

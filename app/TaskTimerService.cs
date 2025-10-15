@@ -5,8 +5,6 @@ namespace Eddy;
 public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService notifier)
 {
     private PeriodicTimer? timer;
-    private readonly ILogger<TaskTimerService> logger = logger;
-    private readonly NotifierService notifier = notifier;
     public readonly CancellationTokenSource cancellationTokenSource = new();
     private int elapsedCount = 0;
 
