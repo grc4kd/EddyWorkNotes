@@ -12,12 +12,12 @@
 @implements IAsyncDisposable
 
 @inject IJSRuntime JS
-@inject TaskTimerService TaskTimerService
-@inject NotifierService NotifierService
+@inject TaskTimerService Timer
+@inject NotifierService Notifier
 @inject ILogger<TaskTimer> Logger
 @inject MarkdownPipelineBuilder MarkdownPipelineBuilder
 @inject EddyWorkNotesContext EddyWorkNotesContext
-@inject TimerCycleService TimerCycleService
+@inject TimerCycleService TimerCycle
 
 <PageTitle>Task Timer</PageTitle>
 
@@ -32,7 +32,7 @@
                 <div id='timerDisplay' class="mb-3">@(TimeRemaining.ToString(@"mm\:ss")) remaining</div>
             </div>
         </div>
-        <p>Current Phase: @(TaskTimerService.CurrentPhase)</p>
+        <p>Current Phase: @(Timer.CurrentPhase)</p>
         <p>Status: @(CurrentState)</p>
         <button @onclick="StartTimer" class="btn btn-primary" disabled="@StartDisabled">Start</button>
         <button @onclick="SkipTimer" class="btn btn-secondary" disabled="@SkipDisabled">Skip</button>
@@ -46,9 +46,9 @@
 
                 <div class="row">
                     <label>
-                        @if (TaskTimerService.IsRunning && CurrentPhase == "Work")
+                        @if (Timer.IsRunning && CurrentPhase == "Work")
                         {
-                            <p>Note (cycle @(TimerCycleService.Cycle) of @CycleCount)</p>
+                            <p>Note (cycle @(TimerCycle.Cycle) of @CycleCount)</p>
                         }
                         else
                         {
@@ -113,14 +113,14 @@
     private const int CycleCount = 4;
 
     // DTOs and model class reference types
-    public TimeSpan TimeRemaining => TaskTimerService.TimeRemaining;
-    public TaskTimerState? CurrentState => TaskTimerService.IsRunning ? TaskTimerState.Running : TaskTimerState.Stopped;
+    public TimeSpan TimeRemaining => Timer.TimeRemaining;
     private TaskTimerOptions options = new();
     private IJSObjectReference? module;
+    public TaskTimerState? CurrentState => Timer.IsRunning ? TaskTimerState.Running : TaskTimerState.Stopped; 
     private List<TimerSession> Sessions = [];
 
     // primitive type state variables
-    public string CurrentPhase => TaskTimerService.CurrentPhase;
+    public string CurrentPhase = string.Empty;
     public string LastCycleCompletedAt
     {
         get
@@ -138,7 +138,6 @@
     // EditForm variables
     [SupplyParameterFromForm]
     private IWorkNotes? Model { get; set; }
-
 
     private MarkdownPipeline? MarkdownPipeline { get; set; }
 
@@ -158,15 +157,21 @@
         .UseGenericAttributes()
         .Build();
 
-        TimerCycleService.Cycle = 0;
+        TimerCycle.Cycle = 0;
+        CurrentPhase = Timer.CurrentPhase;
 
         // attach an event handler for notifications from the timer service
-        NotifierService.Notify += async (msg, val) =>
-        {
-            await InvokeAsync(StateHasChanged);
-        };
+        Notifier.Notify += OnNotify;
 
         LoadSessions();
+    }
+
+    public async Task OnNotify(string key, int value)
+    {
+        await InvokeAsync(() =>
+        {
+            StateHasChanged();
+        });
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -174,7 +179,12 @@
         // ensure to only setup JS interop on first render
         if (firstRender && module is null)
         {
-            module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");            
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
+        }
+
+        if (!Timer.IsRunning)
+        {
+            module?.InvokeVoidAsync("pause");
         }
     }
 
@@ -189,10 +199,14 @@
         }
     }
 
+    public void Dispose() => Notifier.Notify -= OnNotify;
+
     public async ValueTask DisposeAsync()
     {
         if (module is not null)
         {
+            Timer.Pause();
+
             try
             {
                 await module.DisposeAsync();
@@ -200,19 +214,18 @@
             catch (JSDisconnectedException)
             {
                 // Handle exceptions if client JS module is disconnected
-                Logger.LogWarning("JavaScript module disconnected, EditForm Model state: {Model}", Model);
-                await TaskTimerService.CancelAsync().ConfigureAwait(false);
+                Logger.LogWarning("JavaScript module disconnected with time remaining: {TimeRemaining} minutes", Timer.TimeRemaining.TotalMinutes);
             }
         }
     }
 
     private bool StartDisabled {
         get {
-            if (TaskTimerService.IsRunning) {
+            if (Timer.IsRunning) {
                 return true;
             }
 
-            if (TimerCycleService.Cycle >= CycleCount) {
+            if (TimerCycle.Cycle >= CycleCount) {
                 return true;
             }
 
@@ -222,7 +235,7 @@
 
     private bool SkipDisabled {
         get {
-            if (TaskTimerService.IsRunning && TimerCycleService.Cycle <= CycleCount) {
+            if (Timer.IsRunning && TimerCycle.Cycle <= CycleCount) {
                 return false;
             }
             
@@ -270,16 +283,16 @@
 
     public async Task StartTimer()
     {
-        var cts = TaskTimerService.cancellationTokenSource;
+        var cts = Timer.cancellationTokenSource;
 
-        while (TimerCycleService.Cycle < CycleCount && !cts.IsCancellationRequested)
+        while (TimerCycle.Cycle < CycleCount && !cts.IsCancellationRequested)
         {
-            TimerCycleService.Cycle++;
+            TimerCycle.Cycle++;
 
             await HandleCycleAsync(options.WorkTimeSpan, "Work");
 
             // skip the last break timer
-            if (TimerCycleService.Cycle < CycleCount && !cts.IsCancellationRequested)
+            if (TimerCycle.Cycle < CycleCount && !cts.IsCancellationRequested)
             {
                 await HandleCycleAsync(options.BreakTimeSpan, "Break");
             }
@@ -290,7 +303,7 @@
         module?.InvokeVoidAsync("pause");
         StateHasChanged();
 
-        await TaskTimerService.SkipAsync();
+        await Timer.SkipAsync();
     }
 
     private async Task HandleCycleAsync(TimeSpan cycleTime, string phase)
@@ -300,6 +313,6 @@
         module?.InvokeVoidAsync("run", cycleTime.TotalSeconds);
         StateHasChanged();
 
-        await TaskTimerService.StartAsync(cycleTime, phase);
+        await Timer.StartAsync(cycleTime, phase);
     }
 }

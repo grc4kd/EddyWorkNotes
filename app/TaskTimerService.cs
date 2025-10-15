@@ -10,8 +10,8 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
 
     public bool IsRunning { get; private set; } = false;
     public string CurrentPhase { get; private set; } = string.Empty;
-    public TimeSpan TimeRemaining => StopTimeUtc - DateTime.UtcNow;
     public DateTime StopTimeUtc { get; private set; } = DateTime.UtcNow;
+    public TimeSpan TimeRemaining => DateTime.UtcNow >= StopTimeUtc ? TimeSpan.Zero : StopTimeUtc - DateTime.UtcNow;
 
     public async Task StartAsync(TimeSpan Period, string Phase)
     {
@@ -42,6 +42,13 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         }
 
         logger.LogInformation("Timer finished running at local time: {now}", DateTime.Now);
+    }
+
+    public void Pause()
+    {
+        IsRunning = false;
+        StopTimeUtc = DateTime.UtcNow;
+        logger.LogInformation("timer paused at local time: {now}", DateTime.Now);
     }
 
     private void LogExceptionMessage(Exception ex, LogLevel logLevel = LogLevel.Error)

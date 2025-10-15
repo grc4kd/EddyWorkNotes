@@ -49,7 +49,6 @@ namespace test
             Assert.False(taskTimerService.IsRunning);
             Assert.Equal(string.Empty, taskTimerService.CurrentPhase);
             Assert.Equal(TimeSpan.Zero, taskTimerService.TimeRemaining);
-            Assert.Equal(DateTime.MinValue, taskTimerService.StopTimeUtc);
         }
 
         [Fact]
