@@ -17,7 +17,6 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
 
     public async Task StartAsync(TaskTimerRequest request)
     {
-        CurrentPhase = request.Phase;
         StopTimeUtc = DateTime.UtcNow.Add(request.Duration);
         timer.Period = request.Duration;
 

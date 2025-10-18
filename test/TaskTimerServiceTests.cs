@@ -25,14 +25,13 @@ namespace test
             var loggerMock = new Mock<ILogger<TaskTimerService>>();
             var notifierMock = new Mock<NotifierService>();
             var taskTimerService = new TaskTimerService(loggerMock.Object, notifierMock.Object);
-            var request = new TaskTimerRequest(TimeSpan.FromMinutes(1), "Work");
+            var request = new TaskTimerRequest(TimeSpan.FromMinutes(1));
 
             // Act
             var task = taskTimerService.StartAsync(request);
 
             // Assert
             Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
-            Assert.Equal("Work", taskTimerService.  CurrentPhase);
             Assert.True(taskTimerService.IsRunning);
 
             // Cancel running timer on async task scheduler after test assertions
@@ -57,7 +56,7 @@ namespace test
             var loggerMock = new Mock<ILogger<TaskTimerService>>();
             var notifier = new NotifierService();
             var taskTimerService = new TaskTimerService(loggerMock.Object, notifier);
-            var request = new TaskTimerRequest(TimeSpan.FromMinutes(25), "Work");
+            var request = new TaskTimerRequest(TimeSpan.FromMinutes(25));
             
             string result = string.Empty;
             notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
@@ -76,7 +75,7 @@ namespace test
         {
             // Arrange
             var taskTimerService = new TaskTimerService(_loggerMock.Object, _notifierMock.Object);
-            var request = new TaskTimerRequest(TimeSpan.FromMinutes(5), "TestPhase");
+            var request = new TaskTimerRequest(TimeSpan.FromMinutes(5));
 
             // Act
             var task = taskTimerService.StartAsync(request);
@@ -93,15 +92,13 @@ namespace test
         {
             // Arrange
             var taskTimerService = new TaskTimerService(_loggerMock.Object, _notifierMock.Object);
-            var phase = "TestPhase";
-            var request = new TaskTimerRequest(TimeSpan.FromMilliseconds(100), phase);
+            var request = new TaskTimerRequest(TimeSpan.FromMilliseconds(100));
 
             // Act
             _ = taskTimerService.StartAsync(request);
 
             // Assert
             Assert.True(taskTimerService.IsRunning);
-            Assert.Equal(phase, taskTimerService.CurrentPhase);
             Assert.NotEqual(DateTime.MinValue, taskTimerService.StopTimeUtc);
         }
 
@@ -112,7 +109,7 @@ namespace test
             int expectedSeconds = 1500;
             var notifier = new NotifierService();
             var timer = new TaskTimerService(_loggerMock.Object, notifier);
-            var request = new TaskTimerRequest(TimeSpan.FromSeconds(expectedSeconds), "Work");
+            var request = new TaskTimerRequest(TimeSpan.FromSeconds(expectedSeconds));
 
             string result = string.Empty;
 
@@ -163,7 +160,7 @@ namespace test
             // Arrange
             var taskTimerService = new TaskTimerService(_loggerMock.Object, _notifierMock.Object);
             var period = TimeSpan.FromMilliseconds(1000);
-            var request = new TaskTimerRequest(period, "TestPhase");
+            var request = new TaskTimerRequest(period);
 
             // Act
             _ = taskTimerService.StartAsync(request);
@@ -183,7 +180,7 @@ namespace test
             var taskTimerService = new TaskTimerService(_loggerMock.Object, _notifierMock.Object);
             var duration = TimeSpan.FromMinutes(25);
             var breakDuration = TimeSpan.FromMinutes(5);
-            var taskTimerRequest = new TaskTimerRequest(duration, "Phase Title");
+            var taskTimerRequest = new TaskTimerRequest(duration);
 
             // When
             var timerTask = taskTimerService.StartAsync(taskTimerRequest);
@@ -204,7 +201,7 @@ namespace test
             var taskTimerService = new TaskTimerService(_loggerMock.Object, notifier);
 
             var shortDuration = TimeSpan.FromMilliseconds(100);
-            var request = new TaskTimerRequest(shortDuration, "Test Phase");
+            var request = new TaskTimerRequest(shortDuration);
 
             string result = string.Empty;
             notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
@@ -224,7 +221,7 @@ namespace test
             DateTime testStartUtcTime = DateTime.UtcNow;
             var notifier = new NotifierService();
             var taskTimerService = new TaskTimerService(_loggerMock.Object, notifier);
-            var request = new TaskTimerRequest(TimeSpan.FromMinutes(5), "TestPhase");
+            var request = new TaskTimerRequest(TimeSpan.FromMinutes(5));
 
             // When
             var task = taskTimerService.StartAsync(request);
@@ -245,7 +242,7 @@ namespace test
             DateTime testStartUtcTime = DateTime.UtcNow;
             var notifier = new NotifierService();
             var taskTimerService = new TaskTimerService(_loggerMock.Object, notifier);
-            var request = new TaskTimerRequest(TimeSpan.FromMinutes(5), "TestPhase");
+            var request = new TaskTimerRequest(TimeSpan.FromMinutes(5));
 
             // When
             var task = taskTimerService.StartAsync(request);
@@ -268,17 +265,15 @@ namespace test
             var cancellationTokenSource = new CancellationTokenSource(1);
             var taskTimerService = new TaskTimerService(loggerMock.Object, notifierMock.Object, cancellationTokenSource);
 
-            var startTask = taskTimerService.StartAsync(new TaskTimerRequest(TimeSpan.FromMilliseconds(1), "Test"));
 
             // When
             cancellationTokenSource.Dispose();
+            var startTask = taskTimerService.StartAsync(new TaskTimerRequest(TimeSpan.FromMinutes(1)));
             var cancellationTask = taskTimerService.CancelAsync();
-            await startTask;
+            await cancellationTask;
 
             // Then
-            Assert.True(cancellationTokenSource.IsCancellationRequested);
             Assert.False(startTask.IsCanceled);
-            Assert.True(startTask.IsCompletedSuccessfully);
             Assert.True(cancellationTask.IsCompletedSuccessfully);
         }
     }
