@@ -200,10 +200,8 @@ namespace test
         public async Task StartAsync_WhenTimerCompletes_ShouldUpdateElapsedCount()
         {
             // Given
-            var loggerMock = new Mock<ILogger<TaskTimerService>>();
-
             var notifier = new NotifierService();
-            var taskTimerService = new TaskTimerService(loggerMock.Object, notifier);
+            var taskTimerService = new TaskTimerService(_loggerMock.Object, notifier);
 
             var shortDuration = TimeSpan.FromMilliseconds(100);
             var request = new TaskTimerRequest(shortDuration, "Test Phase");
@@ -217,6 +215,27 @@ namespace test
 
             // Then
             Assert.Equal("elapsedCount 1", result);
+        }
+
+        [Fact]
+        public void Pause_WhenCalled_PausesTaskTimer()
+        {
+            // Given
+            DateTime testStartUtcTime = DateTime.UtcNow;
+            var notifier = new NotifierService();
+            var taskTimerService = new TaskTimerService(_loggerMock.Object, notifier);
+            var request = new TaskTimerRequest(TimeSpan.FromMinutes(5), "TestPhase");
+
+            // When
+            var task = taskTimerService.StartAsync(request);
+            var wasRunning = taskTimerService.IsRunning;
+            taskTimerService.Pause();
+
+            // Then
+            Assert.True(wasRunning);
+            Assert.False(taskTimerService.IsRunning);
+            Assert.True(taskTimerService.StopTimeUtc > testStartUtcTime);
+            Assert.False(task.IsCanceled);
         }
     }
 }
