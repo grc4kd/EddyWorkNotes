@@ -318,7 +318,7 @@
     {
         ArgumentOutOfRangeException.ThrowIfNullOrWhiteSpace(phase);
 
-        CurrentPhase = phase;
+        module?.InvokeVoidAsync("run", cycleTime.TotalSeconds);
 
         TaskTimerRequest request = new(cycleTime, phase);
         
