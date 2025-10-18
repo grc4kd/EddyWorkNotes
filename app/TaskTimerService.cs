@@ -1,3 +1,4 @@
+using Azure.Core;
 using Eddy.Requests;
 using Microsoft.Extensions.Logging;
 
@@ -11,20 +12,20 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
     public DateTime StopTimeUtc { get; private set; } = DateTime.UtcNow;
     public TimeSpan TimeRemaining => DateTime.UtcNow >= StopTimeUtc ? TimeSpan.Zero : StopTimeUtc - DateTime.UtcNow;
 
-    public async Task StartAsync(TaskTimerRequest request) => await StartAsync(request.Duration, request.Phase);
-
-    private async Task StartAsync(TimeSpan Period, string Phase)
+    public async Task StartAsync(TaskTimerRequest request)
     {
+        CurrentPhase = request.Phase;
         StopTimeUtc = DateTime.UtcNow.Add(request.Duration);
+
         timer = new PeriodicTimer(request.Duration);
 
         logger.LogInformation("Time/Now[{now}]: Starting task timer for {timespan} ending at time: {time}.", DateTime.Now, request.Duration, StopTimeUtc.ToLocalTime());
 
-        IsRunning = true;
-        await notifier.Update("timerStarted", (int)request.Duration.TotalSeconds);
-        
-        if (!CancellationTokenSource.IsCancellationRequested)
+        if (!cancellationTokenSource.IsCancellationRequested)
         {
+            IsRunning = true;
+            await notifier.Update("timerStarted", (int)request.Duration.TotalSeconds);
+
             try
             {
                 await timer.WaitForNextTickAsync(CancellationTokenSource.Token);
