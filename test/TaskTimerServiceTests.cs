@@ -251,12 +251,35 @@ namespace test
             var task = taskTimerService.StartAsync(request);
             var wasRunning = taskTimerService.IsRunning;
             await taskTimerService.SkipAsync();
-        
+
             // Then
             Assert.True(wasRunning);
             Assert.False(taskTimerService.IsRunning);
             Assert.True(taskTimerService.StopTimeUtc > testStartUtcTime);
             Assert.False(task.IsCanceled);
+        }
+        
+        [Fact]
+        public async Task CancelAsync_WhenCancellationTokenSourceIsDisposed_ShouldHandleGracefully()
+        {
+            // Given
+            var loggerMock = new Mock<ILogger<TaskTimerService>>();
+            var notifierMock = new Mock<NotifierService>();
+            var cancellationTokenSource = new CancellationTokenSource(1);
+            var taskTimerService = new TaskTimerService(loggerMock.Object, notifierMock.Object, cancellationTokenSource);
+
+            var startTask = taskTimerService.StartAsync(new TaskTimerRequest(TimeSpan.FromMilliseconds(1), "Test"));
+
+            // When
+            cancellationTokenSource.Dispose();
+            var cancellationTask = taskTimerService.CancelAsync();
+            await startTask;
+
+            // Then
+            Assert.True(cancellationTokenSource.IsCancellationRequested);
+            Assert.False(startTask.IsCanceled);
+            Assert.True(startTask.IsCompletedSuccessfully);
+            Assert.True(cancellationTask.IsCompletedSuccessfully);
         }
     }
 }

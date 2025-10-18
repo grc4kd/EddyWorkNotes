@@ -5,12 +5,13 @@ namespace Eddy;
 
 public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService notifier, CancellationTokenSource? cancellationTokenSource = null)
 {
-    public readonly CancellationTokenSource cancellationTokenSource = new();
     private int elapsedCount = 0;
 
     public bool IsRunning { get; private set; } = false;
     public DateTime StopTimeUtc { get; private set; } = DateTime.UtcNow;
     public TimeSpan TimeRemaining => DateTime.UtcNow >= StopTimeUtc ? TimeSpan.Zero : StopTimeUtc - DateTime.UtcNow;
+
+    public CancellationTokenSource CancellationTokenSource { get; } = cancellationTokenSource ?? new();
 
     public async Task StartAsync(TaskTimerRequest request)
     {
@@ -21,16 +22,20 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
 
         logger.LogInformation("Time/Now[{now}]: Starting task timer for {timespan} ending at time: {time}.", DateTime.Now, request.Duration, StopTimeUtc.ToLocalTime());
 
-        if (!cancellationTokenSource.IsCancellationRequested)
+        if (!CancellationTokenSource.IsCancellationRequested)
         {
             IsRunning = true;
             await notifier.Update("timerStarted", (int)request.Duration.TotalSeconds);
 
             try
             {
-                await timer.WaitForNextTickAsync(CancellationTokenSource.Token);
+                if (await timer.WaitForNextTickAsync(CancellationTokenSource.Token))
+                {
+                    elapsedCount++;
+                    await notifier.Update("elapsedCount", elapsedCount);
+                }
             }
-            catch (OperationCanceledException ex)
+            catch (OperationCanceledException) when (CancellationTokenSource.Token.IsCancellationRequested)
             {
                 logger.LogWarning("TaskTimer was cancelled at {now}. {Message}:", DateTime.Now, ex.Message);
             }
@@ -67,31 +72,9 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         {
             await CancellationTokenSource.CancelAsync();
         }
-        catch (Exception ex)
+        catch (ObjectDisposedException ex)
         {
-            // log all caught exceptions
-            if (ex is ObjectDisposedException)
-            {
-                logger.LogWarning("Object was disposed during timer cancellation: {message}", ex.Message);
-            }
-
-            if (ex is AggregateException ae)
-            {
-                logger.LogError("{ExceptionType} during timer cancellation: {Message}. Inner exception: {InnerException}", ae.GetBaseException().GetType(), ae.GetBaseException().Message, ae.InnerException);
-                foreach (var ie in ae.InnerExceptions)
-                {
-                    logger.LogError("Exception details: {message}", ie.Message);
-                }
-            }
-
-            // handle operation cancelled exceptions
-            if (ex is OperationCanceledException ocex)
-            {
-                logger.LogInformation("Handled {exception} in handler {handlerName}. Exception message: {Message}", ocex, nameof(CancelAsync), ocex.Message);
-            }
-
-            // rethrow all user-unhandled exceptions here
-            throw;
+            logger.LogWarning("Object was disposed during timer cancellation: {message}", ex.Message);
         }
     }
 }
