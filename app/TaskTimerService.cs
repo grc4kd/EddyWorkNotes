@@ -49,9 +49,9 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         logger.LogInformation("timer paused at local time: {now}", DateTime.Now);
     }
 
-    public void Skip()
+    public async Task SkipAsync()
     {
-        // stop current timer now
+        // stop and clear any time remaining
         IsRunning = false;
         timer.Dispose();
     }
@@ -63,9 +63,31 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         {
             await CancellationTokenSource.CancelAsync();
         }
-        catch (ObjectDisposedException ex)
+        catch (Exception ex)
         {
-            logger.LogWarning("Object was disposed during timer cancellation: {message}", ex.Message);
+            // log all caught exceptions
+            if (ex is ObjectDisposedException)
+            {
+                logger.LogWarning("Object was disposed during timer cancellation: {message}", ex.Message);
+            }
+
+            if (ex is AggregateException ae)
+            {
+                logger.LogError("{ExceptionType} during timer cancellation: {Message}. Inner exception: {InnerException}", ae.GetBaseException().GetType(), ae.GetBaseException().Message, ae.InnerException);
+                foreach (var ie in ae.InnerExceptions)
+                {
+                    logger.LogError("Exception details: {message}", ie.Message);
+                }
+            }
+
+            // handle operation cancelled exceptions
+            if (ex is OperationCanceledException ocex)
+            {
+                logger.LogInformation("Handled {exception} in handler {handlerName}. Exception message: {Message}", ocex, nameof(CancelAsync), ocex.Message);
+            }
+
+            // rethrow all user-unhandled exceptions here
+            throw;
         }
     }
 }
