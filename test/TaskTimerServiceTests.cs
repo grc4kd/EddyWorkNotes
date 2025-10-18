@@ -195,5 +195,28 @@ namespace test
             Assert.True(duration >= taskTimerService.TimeRemaining);
             Assert.True(taskTimerService.StopTimeUtc > testStartUtcTime);
         }
+
+        [Fact]
+        public async Task StartAsync_WhenTimerCompletes_ShouldUpdateElapsedCount()
+        {
+            // Given
+            var loggerMock = new Mock<ILogger<TaskTimerService>>();
+
+            var notifier = new NotifierService();
+            var taskTimerService = new TaskTimerService(loggerMock.Object, notifier);
+
+            var shortDuration = TimeSpan.FromMilliseconds(100);
+            var request = new TaskTimerRequest(shortDuration, "Test Phase");
+
+            string result = string.Empty;
+            notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
+
+            // When
+            var task = taskTimerService.StartAsync(request);
+            await task; // Wait for timer to complete
+
+            // Then
+            Assert.Equal("elapsedCount 1", result);
+        }
     }
 }
