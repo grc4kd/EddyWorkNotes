@@ -1,6 +1,6 @@
 namespace Eddy.Requests;
 
-public record TaskTimerRequest(TimeSpan WorkTimeSpan, TimeSpan BreakTimeSpan)
+public record TaskTimerRequest(TimeSpan Duration, string Phase = "Work")
 {
-    public readonly TimeSpan TotalDuration = WorkTimeSpan + BreakTimeSpan;
+    
 }

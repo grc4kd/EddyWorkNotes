@@ -316,9 +316,8 @@
 
         CurrentPhase = phase;
 
-        TaskTimerRequest request = new(cycleTime);
+        TaskTimerRequest request = new(cycleTime, phase);
+        
         await Timer.StartAsync(request);
-
-        TimerCycle.Next();
     }
 }

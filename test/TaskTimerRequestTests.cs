@@ -8,15 +8,14 @@ public class TaskTimerRequestTests
     public void Initialize_WithValidValues_ShouldSetProperties()
     {
         // Given
-        var workDuration = TimeSpan.FromMinutes(25);
-        var breakDuration = TimeSpan.FromMinutes(5);
+        var duration = TimeSpan.FromMinutes(25);
+        var phase = "Work";
 
         // Act
-        var request = new TaskTimerRequest(workDuration, breakDuration);
+        var request = new TaskTimerRequest(duration, phase);
 
         // Assert
-        Assert.Equal(workDuration, request.WorkTimeSpan);
-        Assert.Equal(breakDuration, request.BreakTimeSpan);
-        Assert.Equal(workDuration + breakDuration, request.TotalDuration);
+        Assert.Equal(duration, request.Duration);
+        Assert.Equal(phase, request.Phase);
     }
 }

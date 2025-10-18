@@ -11,11 +11,9 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
     public DateTime StopTimeUtc { get; private set; } = DateTime.UtcNow;
     public TimeSpan TimeRemaining => DateTime.UtcNow >= StopTimeUtc ? TimeSpan.Zero : StopTimeUtc - DateTime.UtcNow;
 
-    public CancellationTokenSource CancellationTokenSource { get; } = cancellationTokenSource ?? new();
+    public async Task StartAsync(TaskTimerRequest request) => await StartAsync(request.Duration, request.Phase);
 
-    private PeriodicTimer timer = new(TimeSpan.FromSeconds(1));
-
-    public async Task StartAsync(TaskTimerRequest request)
+    private async Task StartAsync(TimeSpan Period, string Phase)
     {
         StopTimeUtc = DateTime.UtcNow.Add(request.Duration);
         timer = new PeriodicTimer(request.Duration);
