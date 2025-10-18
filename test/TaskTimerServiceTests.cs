@@ -237,5 +237,26 @@ namespace test
             Assert.True(taskTimerService.StopTimeUtc > testStartUtcTime);
             Assert.False(task.IsCanceled);
         }
+
+        [Fact]
+        public async Task Skip_WhenCalled_SkipsRemainingTime()
+        {
+            // Given
+            DateTime testStartUtcTime = DateTime.UtcNow;
+            var notifier = new NotifierService();
+            var taskTimerService = new TaskTimerService(_loggerMock.Object, notifier);
+            var request = new TaskTimerRequest(TimeSpan.FromMinutes(5), "TestPhase");
+
+            // When
+            var task = taskTimerService.StartAsync(request);
+            var wasRunning = taskTimerService.IsRunning;
+            await taskTimerService.SkipAsync();
+        
+            // Then
+            Assert.True(wasRunning);
+            Assert.False(taskTimerService.IsRunning);
+            Assert.True(taskTimerService.StopTimeUtc > testStartUtcTime);
+            Assert.False(task.IsCanceled);
+        }
     }
 }

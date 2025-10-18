@@ -1,4 +1,3 @@
-using Azure.Core;
 using Eddy.Requests;
 using Microsoft.Extensions.Logging;
 
@@ -6,6 +5,7 @@ namespace Eddy;
 
 public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService notifier, CancellationTokenSource? cancellationTokenSource = null)
 {
+    public readonly CancellationTokenSource cancellationTokenSource = new();
     private int elapsedCount = 0;
 
     public bool IsRunning { get; private set; } = false;
@@ -17,7 +17,7 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         CurrentPhase = request.Phase;
         StopTimeUtc = DateTime.UtcNow.Add(request.Duration);
 
-        timer = new PeriodicTimer(request.Duration);
+        var timer = new PeriodicTimer(request.Duration);
 
         logger.LogInformation("Time/Now[{now}]: Starting task timer for {timespan} ending at time: {time}.", DateTime.Now, request.Duration, StopTimeUtc.ToLocalTime());
 
@@ -54,7 +54,10 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
     {
         // stop and clear any time remaining
         IsRunning = false;
-        timer.Dispose();
+
+        // update count and notification service
+        elapsedCount++;
+        await notifier.Update("elapsedCount", elapsedCount);
     }
 
     public async Task CancelAsync()
