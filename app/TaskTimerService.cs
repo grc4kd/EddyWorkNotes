@@ -13,29 +13,25 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
 
     public CancellationTokenSource CancellationTokenSource { get; } = cancellationTokenSource ?? new();
 
-    private readonly PeriodicTimer timer = new(TimeSpan.FromSeconds(1));
+    private PeriodicTimer timer = new(TimeSpan.FromSeconds(1));
 
     public async Task StartAsync(TaskTimerRequest request)
     {
         StopTimeUtc = DateTime.UtcNow.Add(request.Duration);
-        timer.Period = request.Duration;
+        timer = new PeriodicTimer(request.Duration);
 
         logger.LogInformation("Time/Now[{now}]: Starting task timer for {timespan} ending at time: {time}.", DateTime.Now, request.Duration, StopTimeUtc.ToLocalTime());
 
+        IsRunning = true;
+        await notifier.Update("timerStarted", (int)request.Duration.TotalSeconds);
+        
         if (!CancellationTokenSource.IsCancellationRequested)
         {
-            IsRunning = true;
-            await notifier.Update("timerStarted", (int)request.Duration.TotalSeconds);
-
             try
             {
-                if (await timer.WaitForNextTickAsync(CancellationTokenSource.Token))
-                {
-                    elapsedCount++;
-                    await notifier.Update("elapsedCount", elapsedCount);
-                }
+                await timer.WaitForNextTickAsync(CancellationTokenSource.Token);
             }
-            catch (OperationCanceledException) when (CancellationTokenSource.Token.IsCancellationRequested)
+            catch (OperationCanceledException ex)
             {
                 logger.LogWarning("TaskTimer was cancelled at {now}. {Message}:", DateTime.Now, ex.Message);
             }
@@ -55,16 +51,11 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         logger.LogInformation("timer paused at local time: {now}", DateTime.Now);
     }
 
-    public async Task SkipAsync()
+    public void Skip()
     {
         // stop current timer now
         IsRunning = false;
-        StopTimeUtc = DateTime.UtcNow;
-        timer.Period = TimeSpan.FromMilliseconds(1);
-
-        // update count and notification service
-        elapsedCount++;
-        await notifier.Update("elapsedCount", elapsedCount);
+        timer.Dispose();
     }
 
     public async Task CancelAsync()

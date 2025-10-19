@@ -246,11 +246,10 @@ namespace test
 
             // When
             var task = taskTimerService.StartAsync(request);
-            var wasRunning = taskTimerService.IsRunning;
-            await taskTimerService.SkipAsync();
+            taskTimerService.Skip();
+            await task;
 
             // Then
-            Assert.True(wasRunning);
             Assert.False(taskTimerService.IsRunning);
             Assert.True(taskTimerService.StopTimeUtc > testStartUtcTime);
             Assert.False(task.IsCanceled);

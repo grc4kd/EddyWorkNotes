@@ -51,7 +51,6 @@
                     <label>
                         @if (Timer.IsRunning)
                         {
-                            <h1>Cycle @(TimerCycle.CycleId)</h1>
                             <h2>@TimerCycle.CurrentCycleName</h2>
                             <p>Duration: @TimerCycle.CurrentCycleTime</p>
                         }
@@ -168,8 +167,6 @@
         Notifier.Notify += OnNotify;
 
         LoadSessions();
-
-        TimerCycle.Reset();
     }
 
     public async Task OnNotify(string key, int value)
@@ -219,9 +216,6 @@
     {
         if (module is not null)
         {
-            Timer.Pause();
-            TimerCycle.Reset();
-
             try
             {
                 await module.DisposeAsync();
@@ -248,7 +242,7 @@
                 return true;
             }
 
-            if (TimerCycle.CycleId >= TargetLoopCount)
+            if (TimerCycle.CycleCount >= TargetLoopCount)
             {
                 return true;
             }
@@ -257,18 +251,7 @@
         }
     }
 
-    private bool SkipDisabled
-    {
-        get
-        {
-            if (Timer.IsRunning && TimerCycle.CycleId <= TargetLoopCount)
-            {
-                return false;
-            }
-
-            return true;
-        }
-    }
+    private bool SkipDisabled => !Timer.IsRunning;
 
     /// <summary>
     /// Process form submission and update completed work notes. Do not submit empty notes or duplicate notes.
@@ -306,27 +289,21 @@
 
     public async Task StartTimer()
     {
-        int k = 0;
-        int loopCount = (TargetLoopCount * 2);
+        int loopCount = 2 * TargetLoopCount;
 
-        // skip the last break timer cycle
-        while (k < loopCount)
+        // skip the last break timer cycle (run until loopCount-1)
+        while (TimerCycle.CycleCount < (loopCount - 1))
         {
-            // update timer cycle service
-            TimerCycle.Next();
-
             // handle page events with service data accessors
             await HandleCycleAsync(TimerCycle.CurrentCycleTime, TimerCycle.CurrentCycleName);
-
-            // increment current loop count at the end of each completed cycle
-            k++;
         }
 
         // update page to final state after all cycles
-        CurrentPhase = $"Ran {k / 2}/{TargetLoopCount} cycles.";
+        CurrentPhase = $"Ran {TimerCycle.CycleCount} cycles.";
+        //StateHasChanged();
     }
 
-    public async Task SkipTimer()
+    public void SkipTimer()
     {
         module?.InvokeVoidAsync("pause");
 
@@ -337,11 +314,11 @@
     {
         ArgumentOutOfRangeException.ThrowIfNullOrWhiteSpace(phase);
 
-        module?.InvokeVoidAsync("run", cycleTime.TotalSeconds);
-
         CurrentPhase = phase;
 
         TaskTimerRequest request = new(cycleTime);
         await Timer.StartAsync(request);
+
+        TimerCycle.Next();
     }
 }
