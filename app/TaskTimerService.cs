@@ -15,9 +15,12 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
 
     private PeriodicTimer timer = new(TimeSpan.FromSeconds(1));
 
-    public async Task StartAsync(TaskTimerRequest request)
+    public async Task Wait(TaskTimerRequest request)
     {
         StopTimeUtc = DateTime.UtcNow.Add(request.Duration);
+        
+        // dispose of timer resources before creating new timer
+        timer?.Dispose();
         timer = new PeriodicTimer(request.Duration);
 
         logger.LogInformation("Time/Now[{now}]: Starting task timer for {timespan} ending at time: {time}.", DateTime.Now, request.Duration, StopTimeUtc.ToLocalTime());

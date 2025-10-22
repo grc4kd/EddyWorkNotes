@@ -28,7 +28,7 @@ namespace test
             var request = new TaskTimerRequest(TimeSpan.FromMinutes(1));
 
             // Act
-            var task = taskTimerService.StartAsync(request);
+            var task = taskTimerService.Wait(request);
 
             // Assert
             Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
@@ -62,7 +62,7 @@ namespace test
             notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
 
             // When
-            var task = taskTimerService.StartAsync(request);
+            var task = taskTimerService.Wait(request);
             await taskTimerService.CancelAsync();
             await task;
 
@@ -78,7 +78,7 @@ namespace test
             var request = new TaskTimerRequest(TimeSpan.FromMinutes(5));
 
             // Act
-            var task = taskTimerService.StartAsync(request);
+            var task = taskTimerService.Wait(request);
             await taskTimerService.CancelAsync();
 
             // Assert
@@ -95,7 +95,7 @@ namespace test
             var request = new TaskTimerRequest(TimeSpan.FromMilliseconds(100));
 
             // Act
-            _ = taskTimerService.StartAsync(request);
+            _ = taskTimerService.Wait(request);
 
             // Assert
             Assert.True(taskTimerService.IsRunning);
@@ -116,7 +116,7 @@ namespace test
             notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
 
             // When
-            var task = timer.StartAsync(request);
+            var task = timer.Wait(request);
             await Task.Yield();
 
             // Then
@@ -163,7 +163,7 @@ namespace test
             var request = new TaskTimerRequest(period);
 
             // Act
-            _ = taskTimerService.StartAsync(request);
+            _ = taskTimerService.Wait(request);
             await Task.Yield();
             var result = taskTimerService.TimeRemaining;
 
@@ -183,7 +183,7 @@ namespace test
             var taskTimerRequest = new TaskTimerRequest(duration);
 
             // When
-            var timerTask = taskTimerService.StartAsync(taskTimerRequest);
+            var timerTask = taskTimerService.Wait(taskTimerRequest);
             await Task.Yield(); // Yield control to test thread immediately
 
             // Then
@@ -207,7 +207,7 @@ namespace test
             notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
 
             // When
-            var task = taskTimerService.StartAsync(request);
+            var task = taskTimerService.Wait(request);
             await task; // Wait for timer to complete
 
             // Then
@@ -224,7 +224,7 @@ namespace test
             var request = new TaskTimerRequest(TimeSpan.FromMinutes(5));
 
             // When
-            var task = taskTimerService.StartAsync(request);
+            var task = taskTimerService.Wait(request);
             var wasRunning = taskTimerService.IsRunning;
             taskTimerService.Pause();
 
@@ -245,7 +245,7 @@ namespace test
             var request = new TaskTimerRequest(TimeSpan.FromMinutes(5));
 
             // When
-            var task = taskTimerService.StartAsync(request);
+            var task = taskTimerService.Wait(request);
             taskTimerService.Skip();
             await task;
 
@@ -267,7 +267,7 @@ namespace test
 
             // When
             cancellationTokenSource.Dispose();
-            var startTask = taskTimerService.StartAsync(new TaskTimerRequest(TimeSpan.FromMinutes(1)));
+            var startTask = taskTimerService.Wait(new TaskTimerRequest(TimeSpan.FromMinutes(1)));
             var cancellationTask = taskTimerService.CancelAsync();
             await cancellationTask;
 

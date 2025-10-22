@@ -116,7 +116,7 @@
     /// <summary>
     /// Target number of work cycles to loop through. 4 for standard Pomodoro technique.
     /// </summary>
-    private const int TargetLoopCount = 4;
+    private const int TargetWorkCycles = 4;
 
     // DTOs and model class reference types
     public TimeSpan TimeRemaining => Timer.TimeRemaining;
@@ -210,7 +210,9 @@
         }
     }
 
-    public void Dispose() => Notifier.Notify -= OnNotify;
+    public void Dispose() {
+        Notifier.Notify -= OnNotify;
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -242,7 +244,7 @@
                 return true;
             }
 
-            if (TimerCycle.CycleCount >= TargetLoopCount)
+            if (TimerCycle.CycleCount >= (2 * TargetWorkCycles) - 1)
             {
                 return true;
             }
@@ -289,10 +291,10 @@
 
     public async Task StartTimer()
     {
-        int loopCount = 2 * TargetLoopCount;
-
         // skip the last break timer cycle (run until loopCount-1)
-        while (TimerCycle.CycleCount < (loopCount - 1))
+        int loopCount = (2 * TargetWorkCycles) - 1;
+
+        while (TimerCycle.CycleCount < loopCount)
         {
             // handle page events with service data accessors
             await HandleCycleAsync(TimerCycle.CurrentCycleTime, TimerCycle.CurrentCycleName);
@@ -300,7 +302,7 @@
 
         // update page to final state after all cycles
         CurrentPhase = $"Ran {TimerCycle.CycleCount} cycles.";
-        //StateHasChanged();
+        StateHasChanged();
     }
 
     public void SkipTimer()
@@ -308,6 +310,7 @@
         module?.InvokeVoidAsync("pause");
 
         Timer.Skip();
+        StateHasChanged();
     }
 
     private async Task HandleCycleAsync(TimeSpan cycleTime, string phase)
@@ -317,8 +320,9 @@
         CurrentPhase = phase;
 
         TaskTimerRequest request = new(cycleTime);
-        await Timer.StartAsync(request);
+        await Timer.Wait(request);
 
         TimerCycle.Next();
+        StateHasChanged();
     }
 }
