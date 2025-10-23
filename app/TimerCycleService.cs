@@ -9,8 +9,26 @@ public class TimerCycleService
     public int CycleCount { get; private set; } = 0;
 
     // use sensible defaults when null can be avoided in member accessors
-    public string CurrentCycleName => CycleId < CycleNames.Count ? CycleNames[CycleId] : string.Empty;
-    public TimeSpan CurrentCycleTime => CycleId < CycleTimes.Count ? CycleTimes[CycleId] : TimeSpan.FromMilliseconds(1);
+    public string CycleName
+    {
+        get
+        {
+            // Validate TimeSpan index is in array of cycle times
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(CycleId, CycleTimes.Count);
+
+            return CycleNames[CycleId];
+        }
+    }
+
+    public TimeSpan CycleTime
+    {
+        get
+        {
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(CycleId, CycleTimes.Count);
+
+            return CycleTimes[CycleId];
+        }
+    }
 
     public void Next()
     {

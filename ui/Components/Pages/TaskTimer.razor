@@ -51,8 +51,8 @@
                     <label>
                         @if (Timer.IsRunning)
                         {
-                            <h2>@TimerCycle.CurrentCycleName</h2>
-                            <p>Duration: @TimerCycle.CurrentCycleTime</p>
+                            <h2>@TimerCycle.CycleName</h2>
+                            <p>Duration: @TimerCycle.CycleTime</p>
                         }
                         else
                         {
@@ -297,7 +297,7 @@
         while (TimerCycle.CycleCount < loopCount)
         {
             // handle page events with service data accessors
-            await HandleCycleAsync(TimerCycle.CurrentCycleTime, TimerCycle.CurrentCycleName);
+            await HandleCycleAsync(TimerCycle.CycleTime, TimerCycle.CycleName);
         }
 
         // update page to final state after all cycles

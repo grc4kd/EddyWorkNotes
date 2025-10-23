@@ -1,11 +1,39 @@
+/**
+ * Timer display update interval in milliseconds - 1 second
+ * @const {number} INTERVAL_DELAY_MS
+ */
 const INTERVAL_DELAY_MS = 1000;
+
+/**
+ * DOM element ID where timer will be displayed
+ * @const {string} elementId
+ */
 const elementId = 'timerDisplay';
 
+/**
+ * Current timer interval ID, used to manage the timer state
+ * @type {number|null}
+ */
 let intervalId = null;
+
+/**
+ * Remaining time in seconds for current timer session
+ * @type {number}
+ */
 let remainingTimeSeconds = 0;
+
+/**
+ * Current running state of the timer
+ * @type {boolean}
+ */
 let isRunning = false;
 
-function updateDisplay(totalSeconds) {    
+/**
+ * Updates the timer display with the current remaining time.
+ * 
+ * @param {number} totalSeconds The total number of seconds remaining
+ */
+function updateDisplay(totalSeconds) {
     const display = document.getElementById(elementId);
     if (display) {
         display.textContent = `${formatTime(totalSeconds)} remaining`;
@@ -14,17 +42,25 @@ function updateDisplay(totalSeconds) {
     }
 }
 
-// Format total seconds into whole minutes and seconds in MM:SS format
+/**
+ * Formats total seconds into MM:SS time string
+ * 
+ * @export
+ * @param {number} totalSeconds The total number of seconds to format
+ * @returns {string} Formatted time string in MM:SS format
+ */
 export function formatTime(totalSeconds) {
-    const minuteNumber = totalSeconds / 60
-    const secondNumber = totalSeconds % 60
+    const seconds = totalSeconds % 60;
+    const minutes = (totalSeconds - seconds) / 60;
 
-    const minutes = String(Math.floor(minuteNumber)).padStart(2, '0');
-    const seconds = String(secondNumber).padStart(2, '0');
-
-    return `${minutes}:${seconds}`
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+/**
+ * Timer tick function - decreases remaining time and updates display
+ * 
+ * @private
+ */
 function tick() {
     if (!isRunning) return;
 
@@ -38,15 +74,26 @@ function tick() {
     }
 }
 
+/**
+ * Pauses the running timer
+ * 
+ * @export
+ */
 export function pause() {
-    if (intervalId){
+    if (intervalId) {
         clearInterval(intervalId);
     }
 }
 
+/**
+ * Starts or restarts the timer with specified duration in seconds
+ * 
+ * @export
+ * @param {number} durationSeconds The duration to count down from in seconds
+ */
 export function run(durationSeconds) {
     // stop any other timers and run this new timer by itself
-    pause()
+    pause();
 
     // the first timer update is immediate
     updateDisplay(durationSeconds);
