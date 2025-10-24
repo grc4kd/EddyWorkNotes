@@ -44,3 +44,14 @@ docker run --rm -it `
    -e TZ="America/Chicago" `
    eddypmassistant
 ```
+
+## Docker Run commands in one line
+These code blocks contain single-line commands without any escape symbols for line continuation, i.e. `\n and \\n
+These are easier to copy, modify, and paste into command shell terminal windows or scripts w/o word wrap.
+
+### Powershell 7
+> tested on: Windows 11, $PSEdition="Core", PowerShell 7.5.4
+
+   ```powershell
+   docker run --rm -it -p 8001:8001 -e ASPNETCORE_HTTPS_PORTS=8001 -e ASPNETCORE_ENVIRONMENT=Development -v ${env:APPDATA}/microsoft/UserSecrets/:/home/app/.microsoft/usersecrets -v ${env:USERPROFILE}/.aspnet/https/:/https/ -e ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx --network eddy-postgres_default -e EDDY_POSTGRES_HOST=eddy-postgres-db-1 -e TZ="America/Chicago" eddypmassistant
+   ```
