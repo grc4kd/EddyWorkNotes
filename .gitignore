@@ -26,3 +26,6 @@ ui/*.db-wal
 
 # exclude secrets for docker compose
 secrets/*
+
+# exclude TestResults folder for automation test trx files
+TestResults/*.trx
