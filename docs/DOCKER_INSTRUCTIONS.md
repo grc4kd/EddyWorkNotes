@@ -14,7 +14,7 @@ $env:KestrelCertificatePassword=(Read-Host -Prompt "Enter your password now" -Ma
 dotnet user-secrets -p .\ui\ui.csproj set "Kestrel:Certificates:Default:Password" $env:KestrelCertificatesPassword
 
 # Set the database connection string for Eddy, replace connection string with your information
-docker user-secrets -p .\ui\ui.csproj set "ConnectionStrings:EddyWorkNotes" "<<EF core provider connecting string>>"
+dotnet user-secrets -p .\ui\ui.csproj set "ConnectionStrings:EddyWorkNotes" "<<EF core provider connecting string>>"
 ```
 
 2. Make sure to build the container and pull the latest ASP.NET base images.
