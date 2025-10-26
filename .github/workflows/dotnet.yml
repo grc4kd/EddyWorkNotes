@@ -32,9 +32,14 @@ jobs:
     - name: Test with dotnet
       run: dotnet test --no-build --logger trx --results-directory "TestResults-${{ matrix.dotnet-version }}" test
     - name: Upload dotnet test results
+      id: upload
       uses: actions/upload-artifact@v4
       with:
         name: dotnet-results-${{ matrix.dotnet-version }}
         path: TestResults-${{ matrix.dotnet-version }}
       # Use always() to always run this step to publish test results when there are test failures
       if: ${{ always() }}
+    - uses: actions/attest-build-provenance@v3
+      with:
+        subject-name: dotnet-results-${{ matrix.dotnet-version }}
+        subject-digest: sha256:${{ steps.upload.outputs.artifact-digest }}
