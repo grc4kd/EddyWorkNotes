@@ -1,39 +1,40 @@
-@page "/worknotesreport"
+@page "/worknotesmd"
 @using System.Text
 @using DataEntities
 @using Microsoft.EntityFrameworkCore
 @using ui.Data
+@using Markdig
 
-<PageTitle>Work Notes Report</PageTitle>
+<PageTitle>Markdown Report</PageTitle>
 
-<h3>Work Notes Report</h3>
+<h3>Markdown Report</h3>
 
-@if (_isLoading)
+@if (isLoading)
 {
     <p>Loading work notes...</p>
 }
-else if (!string.IsNullOrEmpty(_error))
+else if (!string.IsNullOrEmpty(error))
 {
     <div class="alert alert-danger">
-        @_error
+        @error
     </div>
 }
-else if (string.IsNullOrEmpty(_reportContent))
+else if (string.IsNullOrEmpty(MarkdownPreview))
 {
     <p>No work notes found for the last 16 hours or current date.</p>
 }
 else
 {
-    <div class="work-notes-report">
+    <div class="markdown-report">
         <h4>Work Notes</h4>
         <div class="report-content">
-            @_reportContent
+            @((MarkupString)MarkdownPreview)
         </div>
     </div>
 }
 
 <style>
-    .work-notes-report {
+    .markdown-report {
         margin: 20px 0;
     }
 
@@ -41,7 +42,7 @@ else
         border: 1px solid #ccc;
         padding: 15px;
         background-color: #f9f9f9;
-        white-space: pre-wrap;
+        white-space: normal;
     }
 </style>
 
@@ -49,22 +50,23 @@ else
     [Inject]
     public EddyWorkNotesContext Context { get; set; } = default!;
 
-    private string _reportContent = string.Empty;
-    private bool _isLoading = true;
-    private string _error = string.Empty;
+    private string MarkdownPreview = string.Empty;
+    private bool isLoading = true;
+    private string error = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _isLoading = true;
+            isLoading = true;
 
             // Calculate the date 16 hours ago
             var sixteenHoursAgo = DateTime.UtcNow.AddHours(-16);
 
             // Get work notes from the last 16 hours or current date
-            var workNotes = await Context.WorkNote.OrderDescending()
+            var workNotes = await Context.WorkNote
             .Where(w => w.RecordedAtTimeUtc >= DateTime.UtcNow.AddHours(-16))
+            .OrderByDescending(w => w.RecordedAtTimeUtc)
             .ToListAsync();
 
             // Concatenate all descriptions
@@ -73,8 +75,9 @@ else
             {
                 if (!string.IsNullOrWhiteSpace(note.Description))
                 {
-                    sb.Append("Date/Time: ");
-                    sb.AppendLine(note.RecordedAtTimeUtc.ToLocalTime().ToLongTimeString());
+                    sb.Append("### Date/Time: ");
+                    sb.AppendLine(note.RecordedAtTimeUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"));
+                    sb.AppendLine();
                     sb.AppendLine(note.Description);
                     sb.AppendLine();
                     sb.AppendLine("---");
@@ -82,15 +85,22 @@ else
                 }
             }
 
-            _reportContent = sb.ToString().Trim();
+            var markdownContent = sb.ToString().Trim();
+
+            // Use Markdig to render markdown to HTML
+            var pipeline = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions()
+            .Build();
+
+            MarkdownPreview = Markdown.ToHtml(markdownContent, pipeline);
         }
         catch (Exception ex)
         {
-            _error = $"Error loading work notes: {ex.Message}";
+            error = $"Error loading work notes: {ex.Message}";
         }
         finally
         {
-            _isLoading = false;
+            isLoading = false;
         }
     }
 }
