@@ -1,0 +1,93 @@
+@page "/work-notes-report"
+@using System.Text
+@using DataEntities
+@using ui.Data
+
+<PageTitle>Work Notes Report</PageTitle>
+
+<h3>Work Notes Report</h3>
+
+@if (_isLoading)
+{
+    <p>Loading work notes...</p>
+}
+else if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger">
+        @_error
+    </div>
+}
+else if (string.IsNullOrEmpty(_reportContent))
+{
+    <p>No work notes found for the last 16 hours or current date.</p>
+}
+else
+{
+    <div class="work-notes-report">
+        <h4>Work Notes</h4>
+        <div class="report-content">
+            @_reportContent
+        </div>
+    </div>
+}
+
+<style>
+    .work-notes-report {
+        margin: 20px 0;
+    }
+    
+    .report-content {
+        border: 1px solid #ccc;
+        padding: 15px;
+        background-color: #f9f9f9;
+        white-space: pre-wrap;
+    }
+</style>
+
+@code {
+    [Inject]
+    public EddyWorkNotesContext Context { get; set; } = default!;
+
+    private string _reportContent = string.Empty;
+    private bool _isLoading = true;
+    private string _error = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            
+            // Calculate the date 16 hours ago
+            var sixteenHoursAgo = DateTime.UtcNow.AddHours(-16);
+            
+            // Get work notes from the last 16 hours or current date
+            var workNotes = await Context.WorkNote
+                .Where(n => 
+                    n.RecordedAtTimeUtc >= sixteenHoursAgo || 
+                    n.RecordedAtTimeUtc.Date == DateTime.UtcNow.Date
+                )
+                .ToListAsync();
+            
+            // Concatenate all descriptions
+            var sb = new StringBuilder();
+            foreach (var note in workNotes)
+            {
+                if (!string.IsNullOrWhiteSpace(note.Description))
+                {
+                    sb.AppendLine(note.Description);
+                }
+            }
+            
+            _reportContent = sb.ToString().Trim();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error loading work notes: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
