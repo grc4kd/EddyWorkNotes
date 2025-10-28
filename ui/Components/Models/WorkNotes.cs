@@ -4,7 +4,7 @@ namespace ui.Components.Models;
 
 public record WorkNote : IWorkNotes
 {
-    private const int MaxWorkNoteDescription = 1000;
+    public const int MaxWorkNoteDescription = 1000;
     // must be constant for StringLength validator attribute
     private const string ValidationErrorMessage = $"Work notes description is too long (1000 character limit).";
 
