@@ -2,6 +2,8 @@
 @using System.Text
 @using DataEntities
 @using Microsoft.EntityFrameworkCore
+@using System.Web
+@using ui.Components.Validators
 @using ui.Data
 @using Markdig
 
@@ -78,7 +80,7 @@ else
                     sb.Append("### Date/Time: ");
                     sb.AppendLine(note.RecordedAtTimeUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"));
                     sb.AppendLine();
-                    sb.AppendLine(note.Description);
+                    sb.AppendLine(MarkdownValidator.SanitizeMarkdown(note.Description));
                     sb.AppendLine();
                     sb.AppendLine("---");
                     sb.AppendLine();
