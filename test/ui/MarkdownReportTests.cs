@@ -1,7 +1,7 @@
 using System.Text;
 using ui.Components.Validators;
 
-namespace test;
+namespace test.ui;
 
 public class MarkdownReportTests
 {
