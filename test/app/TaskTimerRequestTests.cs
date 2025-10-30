@@ -1,6 +1,6 @@
 using Eddy.Requests;
 
-namespace test;
+namespace test.app;
 
 public class TaskTimerRequestTests
 {

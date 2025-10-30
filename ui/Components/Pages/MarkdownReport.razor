@@ -7,6 +7,8 @@
 @using ui.Data
 @using Markdig
 
+@inject WorkNoteRepository WorkNoteRepository
+
 <PageTitle>Markdown Report</PageTitle>
 
 <h3>Markdown Report</h3>
@@ -62,14 +64,9 @@ else
         {
             isLoading = true;
 
-            // Calculate the date 16 hours ago
-            var sixteenHoursAgo = DateTime.UtcNow.AddHours(-16);
-
             // Get work notes from the last 16 hours or current date
-            var workNotes = await Context.WorkNote
-            .Where(w => w.RecordedAtTimeUtc >= DateTime.UtcNow.AddHours(-16))
-            .OrderByDescending(w => w.RecordedAtTimeUtc)
-            .ToListAsync();
+            var sixteenHoursAgo = DateTime.UtcNow.AddHours(-16);
+            var workNotes = await WorkNoteRepository.GetWorkNotesSince(sixteenHoursAgo);
 
             // Concatenate all descriptions
             var sb = new StringBuilder();

@@ -32,6 +32,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddScoped<NotifierService>();
 builder.Services.AddScoped<TaskTimerService>();
 builder.Services.AddScoped<TimerCycleService>();
+builder.Services.AddScoped<WorkNoteRepository>();
 
 // Third party library service dependencies
 builder.Services.AddScoped<MarkdownPipelineBuilder>();
