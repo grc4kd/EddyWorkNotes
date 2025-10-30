@@ -29,9 +29,7 @@ secrets/*
 
 # exclude TestResults folder for automation test trx files
 TestResults/*.trx
-/.vs/eddy-pm-assistant/CopilotIndices
-/.vs/eddy-pm-assistant/DesignTimeBuild
-/.vs/eddy-pm-assistant/FileContentIndex
-/.vs/eddy-pm-assistant/v17
-/.vs/ProjectEvaluation
 /test/TestResults
+
+# exclude Visual Studio Local Settings
+/.vs/
