@@ -1,6 +1,6 @@
 namespace ui.Components.Models;
 
-public interface IWorkNotes
+public interface IWorkNote
 {
     string Description { get; set; }
 }
