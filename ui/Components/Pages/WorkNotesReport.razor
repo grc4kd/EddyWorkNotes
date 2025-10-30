@@ -4,6 +4,8 @@
 @using Microsoft.EntityFrameworkCore
 @using ui.Data
 
+@inject WorkNoteRepository WorkNoteRepository
+
 <PageTitle>Work Notes Report</PageTitle>
 
 <h3>Work Notes Report</h3>
@@ -59,13 +61,9 @@ else
         {
             _isLoading = true;
 
-            // Calculate the date 16 hours ago
-            var sixteenHoursAgo = DateTime.UtcNow.AddHours(-16);
-
             // Get work notes from the last 16 hours or current date
-            var workNotes = await Context.WorkNote.OrderDescending()
-            .Where(w => w.RecordedAtTimeUtc >= DateTime.UtcNow.AddHours(-16))
-            .ToListAsync();
+            var sixteenHoursAgo = DateTime.UtcNow.AddHours(-16);
+            var workNotes = await WorkNoteRepository.GetWorkNotesSince(sixteenHoursAgo);
 
             // Concatenate all descriptions
             var sb = new StringBuilder();
@@ -76,8 +74,6 @@ else
                     sb.Append("Date/Time: ");
                     sb.AppendLine(note.RecordedAtTimeUtc.ToLocalTime().ToLongTimeString());
                     sb.AppendLine(note.Description);
-                    sb.AppendLine();
-                    sb.AppendLine("---");
                     sb.AppendLine();
                 }
             }
