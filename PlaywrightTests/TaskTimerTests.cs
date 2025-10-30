@@ -31,7 +31,17 @@ public partial class TaskTimerTests : PageTest
     [TestMethod]
     public async Task MainNavigation()
     {
-        await Expect(Page).ToHaveURLAsync(url.AbsoluteUri);
+        UriBuilder builder;
+
+        if (Page.Url.StartsWith("https"))
+        {
+            builder = new UriBuilder("https", url.Host, 7067, url.PathAndQuery);
+        } else
+        {
+            builder = new UriBuilder(url.AbsoluteUri);
+        }
+
+        await Expect(Page).ToHaveURLAsync(builder.Uri.AbsoluteUri);
     }
 
     [TestMethod]
