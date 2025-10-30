@@ -24,4 +24,8 @@
     <ProjectReference Include="..\ui\ui.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="TestResults\" />
+  </ItemGroup>
+
 </Project>

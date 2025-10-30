@@ -4,14 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ui.Data;
 
-public class WorkNoteRepository : IWorkNoteRepository
+public class WorkNoteRepository(EddyWorkNotesContext context) : IWorkNoteRepository
 {
-    private readonly EddyWorkNotesContext _context;
-
-    public WorkNoteRepository(EddyWorkNotesContext context)
-    {
-        _context = context;
-    }
+    private readonly EddyWorkNotesContext _context = context;
 
     public async Task<List<WorkNote>> GetAllWorkNotes()
     {
