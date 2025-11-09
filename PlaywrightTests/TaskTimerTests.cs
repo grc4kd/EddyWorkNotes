@@ -36,7 +36,8 @@ public partial class TaskTimerTests : PageTest
         if (Page.Url.StartsWith("https"))
         {
             builder = new UriBuilder("https", url.Host, 7067, url.PathAndQuery);
-        } else
+        }
+        else
         {
             builder = new UriBuilder(url.AbsoluteUri);
         }
@@ -79,6 +80,29 @@ public partial class TaskTimerTests : PageTest
 
         // Verify timer is stopped
         await Expect(Page.Locator("#timerDisplay").First).ToHaveTextAsync("00:00 remaining");
+    }
+
+    [TestMethod]
+    public async Task TaskTimer_Should_ResetOnNavigation()
+    {
+        await Page.GetByRole(AriaRole.Link, new() { Name = "Task Timer" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Start" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Link, new() { Name = "Report - Work Notes" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Link, new() { Name = "Task Timer" }).ClickAsync();
+
+        // Verify timer is not running
+        await Expect(Page.Locator("#timerDisplay").First).ToContainTextAsync("00:00 remaining");
+
+        // start a new timer
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Start" }).ClickAsync();
+
+        // Verify page state
+        await Expect(Page.Locator("div.card.container-md p").First).ToContainTextAsync("Current Phase");
+        await Expect(Page.Locator("div.card.container-md p").First).ToContainTextAsync("Work");
+        await Expect(Page.Locator("#timerDisplay").First).ToHaveTextAsync(MatchClockRegex());
+
+        // Disconnect (stops the background service timer)
+        await Page.CloseAsync();
     }
 
     [GeneratedRegex(@"\d\d:\d\d")]

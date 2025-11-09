@@ -66,11 +66,12 @@ function tick() {
 
     // always count tick and update timer display
     remainingTimeSeconds -= 1;
-    updateDisplay(remainingTimeSeconds);
 
     // stop at 1 second left on the clock (next tick updates to 0)
     if (remainingTimeSeconds <= 0) {
         pause();
+    } else {
+        updateDisplay(remainingTimeSeconds);
     }
 }
 
@@ -102,4 +103,16 @@ export function run(durationSeconds) {
     remainingTimeSeconds = durationSeconds;
     isRunning = true;
     intervalId = setInterval(tick, INTERVAL_DELAY_MS);
+}
+
+/**
+ * Stops the timer immediately and resets to 0 seconds
+ * 
+ * @export
+ */
+export function reset() {
+    remainingTimeSeconds = 0;
+    isRunning = false;
+    pause();
+    updateDisplay(0);
 }

@@ -17,7 +17,7 @@ public class TaskTimerServiceTests
     }
 
     [Fact]
-    public async Task Start_Should_UpdateTimerState()
+    public void Start_Should_UpdateTimerState()
     {
         // Arrange
         var taskTimerService = new TaskTimerService(_loggerMock.Object, _notifierMock.Object);
@@ -29,9 +29,6 @@ public class TaskTimerServiceTests
         // Assert
         Assert.Equal(TaskStatus.WaitingForActivation, task.Status);
         Assert.True(taskTimerService.IsRunning);
-
-        // Cancel running timer on async task scheduler after test assertions
-        await taskTimerService.CancelAsync();
     }
 
     [Fact]
@@ -57,7 +54,7 @@ public class TaskTimerServiceTests
         notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
 
         var task = taskTimerService.Wait(request);
-        await taskTimerService.CancelAsync();
+        await taskTimerService.CancellationTokenSource.CancelAsync();
         await task;
 
         Assert.Equal(TaskStatus.RanToCompletion, task.Status);
@@ -70,7 +67,7 @@ public class TaskTimerServiceTests
         var request = new TaskTimerRequest(TimeSpan.FromMinutes(5));
 
         var task = taskTimerService.Wait(request);
-        await taskTimerService.CancelAsync();
+        await taskTimerService.CancellationTokenSource.CancelAsync();
 
         await task; // Should complete without exception
         Assert.True(task.IsCompletedSuccessfully);
@@ -113,8 +110,8 @@ public class TaskTimerServiceTests
     public async Task CancelAsync_WhenAlreadyCancelled_ShouldNotThrow()
     {
         var taskTimerService = new TaskTimerService(_loggerMock.Object, _notifierMock.Object);
-        var cancellationTask = taskTimerService.CancelAsync();
-        var cancellationTask2 = taskTimerService.CancelAsync();
+        var cancellationTask = taskTimerService.CancellationTokenSource.CancelAsync();
+        var cancellationTask2 = taskTimerService.CancellationTokenSource.CancelAsync();
 
         await cancellationTask;
         await cancellationTask2;
@@ -205,7 +202,7 @@ public class TaskTimerServiceTests
 
         var task = taskTimerService.Wait(request);
         var wasRunning = taskTimerService.IsRunning;
-        taskTimerService.Pause();
+        taskTimerService.Stop();
 
 
         Assert.True(wasRunning);
@@ -215,27 +212,7 @@ public class TaskTimerServiceTests
     }
 
     [Fact]
-    public async Task Skip_WhenCalled_SkipsRemainingTime()
-    {
-
-        DateTime testStartUtcTime = DateTime.UtcNow;
-        var notifier = new NotifierService();
-        var taskTimerService = new TaskTimerService(_loggerMock.Object, notifier);
-        var request = new TaskTimerRequest(TimeSpan.FromMinutes(5));
-
-
-        var task = taskTimerService.Wait(request);
-        taskTimerService.Skip();
-        await task;
-
-
-        Assert.False(taskTimerService.IsRunning);
-        Assert.True(taskTimerService.StopTimeUtc > testStartUtcTime);
-        Assert.False(task.IsCanceled);
-    }
-
-    [Fact]
-    public async Task CancelAsync_WhenCancellationTokenSourceIsDisposed_ShouldHandleGracefully()
+    public void CancelAsync_WhenCancellationTokenSourceIsDisposed_ShouldHandleGracefully()
     {
 
         var loggerMock = new Mock<ILogger<TaskTimerService>>();
@@ -243,15 +220,11 @@ public class TaskTimerServiceTests
         var cancellationTokenSource = new CancellationTokenSource(1);
         var taskTimerService = new TaskTimerService(loggerMock.Object, notifierMock.Object, cancellationTokenSource);
 
-
-
         cancellationTokenSource.Dispose();
         var startTask = taskTimerService.Wait(new TaskTimerRequest(TimeSpan.FromMinutes(1)));
-        var cancellationTask = taskTimerService.CancelAsync();
-        await cancellationTask;
-
 
         Assert.False(startTask.IsCanceled);
-        Assert.True(cancellationTask.IsCompletedSuccessfully);
+        Assert.True(startTask.IsFaulted);
+        Assert.False(cancellationTokenSource.IsCancellationRequested);
     }
 }
