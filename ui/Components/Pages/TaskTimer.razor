@@ -11,6 +11,7 @@
 @using ui.Components.Models
 @using ui.Data
 @rendermode InteractiveServer
+@implements IDisposable
 @implements IAsyncDisposable
 
 @inject IJSRuntime JS
@@ -124,6 +125,7 @@
     private IJSObjectReference? module;
     public TaskTimerState? CurrentState => Timer.IsRunning ? TaskTimerState.Running : TaskTimerState.Stopped;
     private List<TimerSession> Sessions = [];
+    private int loopCount = (2 * TargetWorkCycles) - 1;
 
     public string CurrentPhase { get; set; } = string.Empty;
 
@@ -151,6 +153,9 @@
     {
         Model ??= new WorkNote();
 
+        Timer.Reset();
+        TimerCycle.Reset();
+
         MarkdownPipeline ??= MarkdownPipelineBuilder
         .UseDefinitionLists()
         .UseEmphasisExtras()
@@ -176,11 +181,13 @@
             StateHasChanged();
         });
 
-        if (key == "timerStarted") {
+        if (key == "timerStarted")
+        {
             module?.InvokeVoidAsync("run", value);
         }
 
-        if (key == "elapsedCount") {
+        if (key == "elapsedCount")
+        {
             module?.InvokeVoidAsync("pause");
         }
     }
@@ -193,9 +200,9 @@
             module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
         }
 
-        if (!Timer.IsRunning)
+        if (firstRender && !Timer.IsRunning)
         {
-            module?.InvokeVoidAsync("pause");
+            module?.InvokeVoidAsync("reset");
         }
     }
 
@@ -210,7 +217,8 @@
         }
     }
 
-    public void Dispose() {
+    public void Dispose()
+    {
         Notifier.Notify -= OnNotify;
     }
 
@@ -228,10 +236,6 @@
                 Logger.LogWarning("JavaScript module disconnected with time remaining: {TimeRemaining} minutes",
                 Timer.TimeRemaining.TotalMinutes);
             }
-        }
-
-        if (Timer.IsRunning) {
-            await Timer.CancelAsync();
         }
     }
 
@@ -292,9 +296,7 @@
     public async Task StartTimer()
     {
         // skip the last break timer cycle (run until loopCount-1)
-        int loopCount = (2 * TargetWorkCycles) - 1;
-
-        while (TimerCycle.CycleCount < loopCount)
+        while (!Timer.CancellationTokenSource.IsCancellationRequested && TimerCycle.CycleCount < loopCount)
         {
             // handle page events with service data accessors
             await HandleCycleAsync(TimerCycle.CycleTime, TimerCycle.CycleName);
@@ -305,12 +307,17 @@
         StateHasChanged();
     }
 
-    public void SkipTimer()
+    public async Task SkipTimer()
     {
         module?.InvokeVoidAsync("pause");
 
-        Timer.Skip();
-        StateHasChanged();
+        Timer.Stop();
+        TimerCycle.Next();
+
+        if (!Timer.CancellationTokenSource.IsCancellationRequested && TimerCycle.CycleCount < loopCount)
+        {
+            await HandleCycleAsync(TimerCycle.CycleTime, TimerCycle.CycleName);
+        }
     }
 
     private async Task HandleCycleAsync(TimeSpan cycleTime, string phase)
@@ -322,7 +329,9 @@
         TaskTimerRequest request = new(cycleTime);
         await Timer.Wait(request);
 
-        TimerCycle.Next();
-        StateHasChanged();
+        if (!Timer.CancellationTokenSource.IsCancellationRequested)
+        {
+            TimerCycle.Next();
+        }
     }
 }
