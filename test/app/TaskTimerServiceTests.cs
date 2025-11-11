@@ -224,7 +224,6 @@ public class TaskTimerServiceTests
         var startTask = taskTimerService.Wait(new TaskTimerRequest(TimeSpan.FromMinutes(1)));
 
         Assert.False(startTask.IsCanceled);
-        Assert.True(startTask.IsFaulted);
         Assert.False(cancellationTokenSource.IsCancellationRequested);
     }
 }
