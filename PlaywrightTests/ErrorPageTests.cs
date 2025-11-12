@@ -1,15 +1,15 @@
 using Microsoft.Playwright;
 using Microsoft.Playwright.MSTest;
+using PlaywrightTests.Helpers;
 
 namespace PlaywrightTests;
 
 [TestClass]
 public partial class ErrorPageTests : PageTest
 {
-    // test class variables shared across all tests
-    const string port = "5085";
-    static readonly Uri url = new($"http://localhost:{port}/Error");
-    static readonly TimeSpan clickDelayTime = TimeSpan.FromMilliseconds(100);
+    readonly string port = PageTestDefaults.DefaultPort;
+    static readonly Uri url = new($"{PageTestDefaults.DefaultBaseUrl}/Error");
+    static readonly TimeSpan clickDelayTime = TimeSpan.FromMilliseconds(PageTestDefaults.DefaultTimeout);
 
     public ErrorPageTests()
     {

@@ -6,6 +6,8 @@ namespace ui.Data
     public class EddyWorkNotesContext(DbContextOptions<EddyWorkNotesContext> options) : DbContext(options)
     {
         public DbSet<WorkNote> WorkNote { get; set; } = default!;
+        public DbSet<Contact> Contacts { get; set; } = default!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder

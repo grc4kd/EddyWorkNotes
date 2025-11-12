@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ui.Components.Models;
 
-public record WorkNote : IWorkNote
+public record WorkNote
 {
     public const int MaxWorkNoteDescription = 1000;
     // must be constant for StringLength validator attribute

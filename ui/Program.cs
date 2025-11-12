@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ui.Data;
 using ui.Components;
 using Npgsql;
+using ui.Data.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 var connStrName = "EddyWorkNotes";

@@ -16,14 +16,6 @@ public class WorkNoteModelTests
     }
 
     [Fact]
-    public void WorkNote_Should_Implement_IWorkNotes()
-    {
-        var workNote = new WorkNote("Test description");
-
-        Assert.IsAssignableFrom<IWorkNote>(workNote);
-    }
-
-    [Fact]
     public void WorkNote_Constructor_Should_Set_Description()
     {
         // Arrange
