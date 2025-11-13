@@ -35,7 +35,7 @@
                 <div id='timerDisplay' class="mb-3">@(TimeRemaining.ToString(@"mm\:ss")) remaining</div>
             </div>
         </div>
-        <p>Current Phase: @(CurrentPhase)</p>
+        <p>Current Phase: @(TimerCycle.CycleName)</p>
         <p>Status: @(CurrentState)</p>
         <p>Current Cycle: @(TimerCycle.CycleCount)</p>
         <button @onclick="StartTimer" class="btn btn-primary" disabled="@StartDisabled">Start</button>
@@ -127,8 +127,6 @@
     private List<TimerSession> Sessions = [];
     private int loopCount = (2 * TargetWorkCycles) - 1;
 
-    public string CurrentPhase { get; set; } = string.Empty;
-
     public string LastCycleCompletedAt
     {
         get
@@ -176,11 +174,6 @@
 
     public async Task OnNotify(string key, int value)
     {
-        await InvokeAsync(() =>
-        {
-            StateHasChanged();
-        });
-
         if (key == "timerStarted")
         {
             module?.InvokeVoidAsync("run", value);
@@ -190,6 +183,8 @@
         {
             module?.InvokeVoidAsync("pause");
         }
+
+        await InvokeAsync(() => StateHasChanged());
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -203,6 +198,11 @@
         if (firstRender && !Timer.IsRunning)
         {
             module?.InvokeVoidAsync("reset");
+        }
+
+        if (firstRender && Timer.IsRunning)
+        {
+            module?.InvokeVoidAsync("run", Timer.TimeRemaining);
         }
     }
 
@@ -296,42 +296,18 @@
     public async Task StartTimer()
     {
         // skip the last break timer cycle (run until loopCount-1)
-        while (!Timer.CancellationTokenSource.IsCancellationRequested && TimerCycle.CycleCount < loopCount)
+        while (TimerCycle.CycleCount < loopCount)
         {
-            // handle page events with service data accessors
-            await HandleCycleAsync(TimerCycle.CycleTime, TimerCycle.CycleName);
+            await Timer.Wait(new(TimerCycle.CycleTime));
         }
-
-        // update page to final state after all cycles
-        CurrentPhase = $"Ran {TimerCycle.CycleCount} cycles.";
-        StateHasChanged();
     }
 
-    public async Task SkipTimer()
+    public void SkipTimer()
     {
-        module?.InvokeVoidAsync("pause");
+        @* module?.InvokeVoidAsync("pause"); *@
 
-        Timer.Stop();
         TimerCycle.Next();
-
-        if (!Timer.CancellationTokenSource.IsCancellationRequested && TimerCycle.CycleCount < loopCount)
-        {
-            await HandleCycleAsync(TimerCycle.CycleTime, TimerCycle.CycleName);
-        }
-    }
-
-    private async Task HandleCycleAsync(TimeSpan cycleTime, string phase)
-    {
-        ArgumentOutOfRangeException.ThrowIfNullOrWhiteSpace(phase);
-
-        CurrentPhase = phase;
-
-        TaskTimerRequest request = new(cycleTime);
-        await Timer.Wait(request);
-
-        if (!Timer.CancellationTokenSource.IsCancellationRequested)
-        {
-            TimerCycle.Next();
-        }
+        Timer.Skip();
+        StateHasChanged();
     }
 }

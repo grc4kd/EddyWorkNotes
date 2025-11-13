@@ -175,17 +175,13 @@ public class TaskTimerServiceTests
 
         var notifier = new NotifierService();
         var taskTimerService = new TaskTimerService(_loggerMock.Object, notifier);
-
         var shortDuration = TimeSpan.FromMilliseconds(100);
         var request = new TaskTimerRequest(shortDuration);
 
         string result = string.Empty;
         notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
-
-
         var task = taskTimerService.Wait(request);
         await task; // Wait for timer to complete
-
 
         Assert.Equal("elapsedCount 1", result);
     }
@@ -225,5 +221,36 @@ public class TaskTimerServiceTests
 
         Assert.False(startTask.IsCanceled);
         Assert.False(cancellationTokenSource.IsCancellationRequested);
+    }
+
+    [Fact]
+    public void Skip_WhenCalled_ShouldStopTimerAndDisposeTimer()
+    {
+        var taskTimerService = new TaskTimerService(_loggerMock.Object, _notifierMock.Object);
+        var request = new TaskTimerRequest(TimeSpan.FromMinutes(5));
+
+        _ = taskTimerService.Wait(request);
+        taskTimerService.Skip();
+
+        Assert.False(taskTimerService.IsRunning);
+        Assert.Equal(DateTime.UtcNow, taskTimerService.StopTimeUtc, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public void Reset_WhenCalled_ShouldStopTimerAndResetElapsedCount()
+    {
+        var notifier = new NotifierService();
+        var taskTimerService = new TaskTimerService(_loggerMock.Object, notifier);
+        var requestTime = TimeSpan.FromMinutes(5);
+        var request = new TaskTimerRequest(requestTime);
+
+        string result = string.Empty;
+        notifier.Notify += new(async (s, i) => result = await Task.FromResult($"{s} {i}"));
+        _ = taskTimerService.Wait(request);
+        taskTimerService.Reset();
+
+        Assert.False(taskTimerService.IsRunning);
+        Assert.Equal(DateTime.UtcNow, taskTimerService.StopTimeUtc, TimeSpan.FromSeconds(1));
+        Assert.Equal($"timerStarted {requestTime.TotalSeconds}", result);
     }
 }
