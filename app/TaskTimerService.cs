@@ -6,6 +6,7 @@ namespace Eddy;
 public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService notifier, CancellationTokenSource? cancellationTokenSource = null)
 {
     private int ElapsedCount = 0;
+    private PeriodicTimer timer = new(TimeSpan.FromMilliseconds(1));
 
     public bool IsRunning { get; private set; } = false;
     public DateTime StopTimeUtc { get; private set; } = DateTime.UtcNow;
@@ -17,7 +18,7 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
     {
         StopTimeUtc = DateTime.UtcNow.Add(request.Duration);
 
-        using var timer = new PeriodicTimer(request.Duration);
+        timer = new PeriodicTimer(request.Duration);
 
         logger.LogInformation("Time/Now[{now}]: Starting task timer for {timespan} ending at time: {time}.", DateTime.Now, request.Duration, StopTimeUtc.ToLocalTime());
 
@@ -47,6 +48,14 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         IsRunning = false;
         StopTimeUtc = DateTime.UtcNow;
         logger.LogInformation("timer paused at local time: {now}", DateTime.Now);
+    }
+
+    public void Skip()
+    {
+        IsRunning = false;
+        StopTimeUtc = DateTime.UtcNow;
+        timer.Dispose();
+        logger.LogInformation("timer skipped at local time: {now}", DateTime.Now);
     }
 
     public void Reset()
