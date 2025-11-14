@@ -46,7 +46,7 @@ jobs:
         - language: actions
           build-mode: none
         - language: csharp
-          build-mode: autobuild
+          build-mode: manual
         - language: javascript-typescript
           build-mode: none
         # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
@@ -93,8 +93,7 @@ jobs:
         echo 'If you are using a "manual" build mode for one or more of the' \
           'languages you are analyzing, replace this with the commands to build' \
           'your code, for example:'
-        echo '  make bootstrap'
-        echo '  make release'
+        echo '  dotnet build'
         exit 1
 
     - name: Perform CodeQL Analysis
