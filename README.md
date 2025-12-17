@@ -1,5 +1,8 @@
 # README
 
+## Github Actions status indicators
+[![CodeQL](https://github.com/grc4kd/EddyWorkNotes/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/grc4kd/EddyWorkNotes/actions/workflows/github-code-scanning/codeql)
+
 ## Quick Start (Getting Started)
 Eddy helps you track your skill development and maintain motivation while coding. Here's how to get started:
 
