@@ -3,16 +3,22 @@ using Microsoft.Extensions.Logging;
 
 namespace Eddy;
 
-public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService notifier, CancellationTokenSource? cancellationTokenSource = null)
+public class TaskTimerService(
+    ILogger<TaskTimerService> logger,
+    NotifierService notifier,
+    CancellationTokenSource? cancellationTokenSource = null
+)
 {
     private int ElapsedCount = 0;
     private PeriodicTimer timer = new(TimeSpan.FromMilliseconds(1));
 
     public bool IsRunning { get; private set; } = false;
     public DateTime StopTimeUtc { get; private set; } = DateTime.UtcNow;
-    public TimeSpan TimeRemaining => DateTime.UtcNow >= StopTimeUtc ? TimeSpan.Zero : StopTimeUtc - DateTime.UtcNow;
+    public TimeSpan TimeRemaining =>
+        DateTime.UtcNow >= StopTimeUtc ? TimeSpan.Zero : StopTimeUtc - DateTime.UtcNow;
 
-    public CancellationTokenSource CancellationTokenSource { get; } = cancellationTokenSource ?? new();
+    public CancellationTokenSource CancellationTokenSource { get; } =
+        cancellationTokenSource ?? new();
 
     public async Task Wait(TaskTimerRequest request)
     {
@@ -20,7 +26,12 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
 
         timer = new PeriodicTimer(request.Duration);
 
-        logger.LogInformation("Time/Now[{now}]: Starting task timer for {timespan} ending at time: {time}.", DateTime.Now, request.Duration, StopTimeUtc.ToLocalTime());
+        logger.LogInformation(
+            "Time/Now[{now}]: Starting task timer for {timespan} ending at time: {time}.",
+            DateTime.Now,
+            request.Duration,
+            StopTimeUtc.ToLocalTime()
+        );
 
         IsRunning = true;
         await notifier.Update("timerStarted", (int)request.Duration.TotalSeconds);
@@ -33,7 +44,11 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
             }
             catch (OperationCanceledException ex)
             {
-                logger.LogWarning("TaskTimer was cancelled at {now}. {Message}:", DateTime.Now, ex.Message);
+                logger.LogWarning(
+                    "TaskTimer was cancelled at {now}. {Message}:",
+                    DateTime.Now,
+                    ex.Message
+                );
             }
 
             ElapsedCount++;
@@ -58,12 +73,12 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         logger.LogInformation("timer skipped at local time: {now}", DateTime.Now);
     }
 
-    public void Reset()
+    public async Task Reset()
     {
         IsRunning = false;
         StopTimeUtc = DateTime.UtcNow;
         ElapsedCount = 0;
         logger.LogInformation("timer reset at local time: {now}", DateTime.Now);
-        notifier.Update("timerReset", 0);
+        await notifier.Update("timerReset", 0);
     }
 }
