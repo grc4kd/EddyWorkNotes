@@ -4,5 +4,5 @@ public record TimerSession(string Message, DateTime CompletedAtUtc, string? Work
 {
     public TimerSession(DataEntities.WorkNote workNote) : this("Work", workNote.RecordedAtTimeUtc.ToUniversalTime(), workNote.Description) { }
 
-    public DateTime CompletedAtLocaltime = CompletedAtUtc.ToLocalTime();
+    public DateTime CompletedAtLocaltime { get; } = CompletedAtUtc.ToLocalTime();
 }

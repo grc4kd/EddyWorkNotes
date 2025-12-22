@@ -1,24 +1,17 @@
 using System.Web;
 
-namespace ui.Components.Validators
+namespace ui.Components.Validators;
+
+public static class MarkdownValidator
 {
-    public class MarkdownValidator
+    /// <summary>
+    /// Sanitizes Markdown input by escaping characters that could be interpreted as Markdown syntax
+    /// </summary>
+    /// <param name="input">The input string to sanitize</param>
+    /// <returns>A sanitized version of the input string safe for Markdown rendering</returns>
+    public static string SanitizeMarkdown(string input)
     {
-        /// <summary>
-        /// Sanitizes markdown input by escaping characters that could be interpreted as markdown syntax
-        /// </summary>
-        /// <param name="input">The input string to sanitize</param>
-        /// <returns>A sanitized version of the input string safe for markdown rendering</returns>
-        public static string SanitizeMarkdown(string input)
-        {
-            // Whitespace input is safe, echo and return immediately
-            if (string.IsNullOrWhiteSpace(input))
-                return input;
-
-            // Sanitize embedded raw HTML if found, this is allowed in markdown specs but
-            // can be used for injection attacks.
-
-            return HttpUtility.HtmlEncode(input);
-        }
+        // Whitespace input is safe, echo and return immediately
+        return !string.IsNullOrWhiteSpace(input) ? HttpUtility.HtmlEncode(input) : input;
     }
 }

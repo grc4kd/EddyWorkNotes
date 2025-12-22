@@ -83,6 +83,7 @@ function tick() {
 export function pause() {
     if (intervalId) {
         clearInterval(intervalId);
+        intervalId = null;
     }
 }
 
@@ -111,8 +112,7 @@ export function run(durationSeconds) {
  * @export
  */
 export function reset() {
-    remainingTimeSeconds = 0;
-    isRunning = false;
     pause();
+    remainingTimeSeconds = 0;
     updateDisplay(0);
 }

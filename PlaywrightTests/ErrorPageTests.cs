@@ -4,27 +4,27 @@ using Microsoft.Playwright.MSTest;
 namespace PlaywrightTests;
 
 [TestClass]
-public partial class ErrorPageTests : PageTest
+public class ErrorPageTests : PageTest
 {
     // test class variables shared across all tests
-    const string port = "5085";
-    static readonly Uri url = new($"http://localhost:{port}/Error");
-    static readonly TimeSpan clickDelayTime = TimeSpan.FromMilliseconds(100);
+    private const string Port = "5085";
+    private static readonly Uri Url = new($"http://localhost:{Port}/Error");
+    private static readonly TimeSpan ClickDelayTime = TimeSpan.FromMilliseconds(100);
 
     public ErrorPageTests()
     {
         // test constants / static objects
-        ArgumentException.ThrowIfNullOrWhiteSpace(port);
-        ArgumentOutOfRangeException.ThrowIfEqual(int.TryParse(port, out int portNumber), false);
+        ArgumentException.ThrowIfNullOrWhiteSpace(Port);
+        ArgumentOutOfRangeException.ThrowIfEqual(int.TryParse(Port, out var portNumber), false);
         ArgumentOutOfRangeException.ThrowIfLessThan(portNumber, 1025);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(portNumber, 65536);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(clickDelayTime, TimeSpan.FromSeconds(2));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(ClickDelayTime, TimeSpan.FromSeconds(2));
     }
 
     [TestMethod]
     public async Task ErrorPage_Should_ShowRequestId_WhenAvailable()
     {
-        await Page.GotoAsync(url.AbsoluteUri);
+        await Page.GotoAsync(Url.AbsoluteUri);
 
         await Expect(Page.Locator("h1").First).ToHaveTextAsync("Error.");
         await Expect(Page.Locator("h2").First).ToContainTextAsync("An error occurred");
@@ -37,16 +37,17 @@ public partial class ErrorPageTests : PageTest
     [TestMethod]
     public async Task ErrorPage_Should_DisplayDevelopmentModeInstructions()
     {
-        await Page.GotoAsync(url.AbsoluteUri);
+        await Page.GotoAsync(Url.AbsoluteUri);
 
         await Expect(Page.Locator("body > div.page > main > article > p:nth-child(5)"))
-            .ToContainTextAsync("Swapping to Development environment will display more detailed information about the error that occurred.");
+            .ToContainTextAsync(
+                "Swapping to Development environment will display more detailed information about the error that occurred.");
     }
 
     [TestMethod]
     public async Task ErrorPage_Should_HaveCorrectTitle()
     {
-        await Page.GotoAsync(url.AbsoluteUri);
+        await Page.GotoAsync(Url.AbsoluteUri);
 
         var title = await Page.TitleAsync();
         Assert.AreEqual("Error", title);
@@ -58,8 +59,8 @@ public partial class ErrorPageTests : PageTest
         var consoleMessages = new List<IConsoleMessage>();
         Page.Console += (_, e) => consoleMessages.Add(e);
 
-        await Page.GotoAsync(url.AbsoluteUri);
+        await Page.GotoAsync(Url.AbsoluteUri);
 
-        Assert.AreEqual(0, consoleMessages.Where(m => m.Type == "error").Count());
+        Assert.AreEqual(0, consoleMessages.Count(m => m.Type == "error"));
     }
 }

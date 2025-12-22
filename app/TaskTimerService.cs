@@ -64,5 +64,6 @@ public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService 
         StopTimeUtc = DateTime.UtcNow;
         ElapsedCount = 0;
         logger.LogInformation("timer reset at local time: {now}", DateTime.Now);
+        notifier.Update("timerReset", 0);
     }
 }

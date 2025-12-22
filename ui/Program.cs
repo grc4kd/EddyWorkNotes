@@ -1,3 +1,4 @@
+using DataEntities.Interfaces;
 using Eddy;
 using Markdig;
 using Microsoft.EntityFrameworkCore;
@@ -6,21 +7,10 @@ using ui.Components;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
-var connStrName = "EddyWorkNotes";
+const string connStrName = "EddyWorkNotes";
 
-static NpgsqlConnectionStringBuilder BuildConnectionString(WebApplicationBuilder builder, string connStrName)
-{
-    var npgsqlConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
-        builder.Configuration.GetConnectionString(connStrName)
-        ?? throw new InvalidOperationException($"Connection string '{connStrName}' not found."))
-    {
-        // allow overriding the postgres database server host using environment variable
-        Host = Environment.GetEnvironmentVariable("EDDY_POSTGRES_HOST") ?? "localhost"
-    };
-    return npgsqlConnectionStringBuilder;
-}
-
-builder.Services.AddDbContextFactory<EddyWorkNotesContext>(options => options.UseNpgsql(BuildConnectionString(builder, connStrName).ConnectionString));
+builder.Services.AddDbContextFactory<EddyWorkNotesContext>(options =>
+    options.UseNpgsql(BuildConnectionString(builder, connStrName).ConnectionString));
 
 builder.Services.AddQuickGridEntityFrameworkAdapter();
 
@@ -32,7 +22,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddScoped<NotifierService>();
 builder.Services.AddScoped<TaskTimerService>();
 builder.Services.AddScoped<TimerCycleService>();
-builder.Services.AddScoped<WorkNoteRepository>();
+builder.Services.AddScoped<IWorkNoteRepository, WorkNoteRepository>();
 
 // Third party library service dependencies
 builder.Services.AddScoped<MarkdownPipelineBuilder>();
@@ -66,3 +56,16 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+return;
+
+static NpgsqlConnectionStringBuilder BuildConnectionString(WebApplicationBuilder builder, string connStrName)
+{
+    var npgsqlConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
+        builder.Configuration.GetConnectionString(connStrName)
+        ?? throw new InvalidOperationException($"Connection string '{connStrName}' not found."))
+    {
+        // allow overriding the postgres database server host using environment variable
+        Host = Environment.GetEnvironmentVariable("EDDY_POSTGRES_HOST") ?? "localhost"
+    };
+    return npgsqlConnectionStringBuilder;
+}

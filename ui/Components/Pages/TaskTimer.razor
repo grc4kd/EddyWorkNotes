@@ -1,13 +1,6 @@
 @page "/tasktimer"
-@using System.Threading.Tasks
-@using System.Reflection
 @using Eddy.Requests
 @using Markdig
-@using Markdig.Parsers
-@using Markdig.Renderers
-@using Microsoft.CodeAnalysis.CSharp.Syntax
-@using Microsoft.EntityFrameworkCore
-@using Microsoft.IdentityModel.Tokens
 @using ui.Components.Models
 @using ui.Data
 @rendermode InteractiveServer
@@ -32,7 +25,7 @@
         <div class="mb-2">
             <div class="mb-2" asp-for="timeRemaining">
                 Time Remaining
-                <div id='timerDisplay' class="mb-3">@(TimeRemaining.ToString(@"mm\:ss")) remaining</div>
+                <div id="timerDisplay" class="mb-3">@(TimeRemaining.ToString(@"mm\:ss")) remaining</div>
             </div>
         </div>
         <p>Current Phase: @(TimerCycle.CycleName)</p>
@@ -45,8 +38,8 @@
     <div class="card-body container-sm">
         <div class="container-sm">
             <EditForm Model="Model" OnValidSubmit="Submit" FormName="WorkNotes">
-                <DataAnnotationsValidator />
-                <ValidationSummary />
+                <DataAnnotationsValidator/>
+                <ValidationSummary/>
 
                 <div class="row">
                     <label>
@@ -60,7 +53,7 @@
                             <p><u>timer is not running</u></p>
                         }
                         <div class="row">
-                            <InputTextArea @bind-Value="Model!.Description" />
+                            <InputTextArea @bind-Value="Model!.Description"/>
                         </div>
                     </label>
                     <div class="pt-4">
@@ -71,10 +64,10 @@
         </div>
         <div class="card-body container-sm">
             <h3 class="mb-3">History</h3>
-            @if (Sessions.Any())
+            @if (_sessions.Any())
             {
                 <div class="d-flex flex-column">
-                    @foreach (var session in Sessions)
+                    @foreach (var session in _sessions)
                     {
                         <div class="card my-2">
                             <div class="card-body">
@@ -82,7 +75,7 @@
                                 {
                                     <p class="card-text"><small class="text-muted">Recorded at
                                             @session.CompletedAtLocaltime.ToShortTimeString()</small></p>
-                                    <p class="my-2">@((MarkupString)parseNotes(session.WorkNotes))</p>
+                                    <p class="my-2">@((MarkupString)ParseNotes(session.WorkNotes))</p>
                                 }
                             </div>
                         </div>
@@ -99,51 +92,50 @@
 
 <!-- this toast is hidden by default, and controlled by CSS classes 'show' and 'hide' -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div id="toastNotification" class="toast @(ShowToast ? "show" : "hide")" role="alert" aria-live="assertive"
-        aria-atomic="true">
+    <div id="toastNotification" class="toast @(_showToast ? "show" : "hide")" role="alert" aria-live="assertive"
+         aria-atomic="true">
         <div class="toast-header">
             <strong class="me-auto">Task Timer</strong>
             <small>Cycle complete: @LastCycleCompletedAt</small>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" @onclick="() => ShowToast = false"
-                aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" @onclick="() => _showToast = false"
+                    aria-label="Close"></button>
         </div>
         <div class="toast-body">
-            On a short break for <em>@(options.BreakTimeSpan.TotalMinutes)</em> minutes. Be right back!
+            On a short break for <em>@(_options.BreakTimeSpan.TotalMinutes)</em> minutes. Be right back!
         </div>
     </div>
 </div>
 
 @code {
+
     /// <summary>
     /// Target number of work cycles to loop through. 4 for standard Pomodoro technique.
     /// </summary>
     private const int TargetWorkCycles = 4;
 
     // DTOs and model class reference types
-    public TimeSpan TimeRemaining => Timer.TimeRemaining;
-    private TaskTimerOptions options = new();
-    private IJSObjectReference? module;
-    public TaskTimerState? CurrentState => Timer.IsRunning ? TaskTimerState.Running : TaskTimerState.Stopped;
-    private List<TimerSession> Sessions = [];
-    private int loopCount = (2 * TargetWorkCycles) - 1;
+    private TimeSpan TimeRemaining => Timer.TimeRemaining;
+    private readonly TaskTimerOptions _options = new();
+    private IJSObjectReference? _module;
+    private TaskTimerState CurrentState => Timer.IsRunning ? TaskTimerState.Running : TaskTimerState.Stopped;
+    private List<TimerSession> _sessions = [];
+    private const int LoopCount = 2 * TargetWorkCycles - 1;
 
-    public string LastCycleCompletedAt
+    private string LastCycleCompletedAt
     {
         get
         {
-            if (Sessions.Any())
-                return Sessions.OrderByDescending(k => k.CompletedAtUtc)
-                .First().CompletedAtLocaltime.ToLongTimeString();
-            else
-                return "(no time recorded)";
+            if (_sessions.Any())
+                return _sessions.OrderByDescending(k => k.CompletedAtUtc)
+                    .First().CompletedAtLocaltime.ToLongTimeString();
+            return "(no time recorded)";
         }
     }
 
-    private bool ShowToast = false;
+    private bool _showToast;
 
     // EditForm variables
-    [SupplyParameterFromForm]
-    private IWorkNote? Model { get; set; }
+    [SupplyParameterFromForm] private IWorkNote? Model { get; set; }
 
     private MarkdownPipeline? MarkdownPipeline { get; set; }
 
@@ -155,16 +147,16 @@
         TimerCycle.Reset();
 
         MarkdownPipeline ??= MarkdownPipelineBuilder
-        .UseDefinitionLists()
-        .UseEmphasisExtras()
-        .UseGridTables()
-        .UseMathematics()
-        .UseMediaLinks()
-        .UsePipeTables()
-        .UseListExtras()
-        .UseTaskLists()
-        .UseGenericAttributes()
-        .Build();
+            .UseDefinitionLists()
+            .UseEmphasisExtras()
+            .UseGridTables()
+            .UseMathematics()
+            .UseMediaLinks()
+            .UsePipeTables()
+            .UseListExtras()
+            .UseTaskLists()
+            .UseGenericAttributes()
+            .Build();
 
         // attach an event handler for notifications from the timer service
         Notifier.Notify += OnNotify;
@@ -172,49 +164,53 @@
         LoadSessions();
     }
 
-    public async Task OnNotify(string key, int value)
+    private async Task OnNotify(string key, int value)
     {
-        if (key == "timerStarted")
+        switch (key)
         {
-            module?.InvokeVoidAsync("run", value);
+            case "timerStarted":
+                _module?.InvokeVoidAsync("run", value);
+                break;
+            case "elapsedCount":
+                _module?.InvokeVoidAsync("pause");
+                break;
+            case "timerReset":
+                _module?.InvokeVoidAsync("reset");
+                break;
         }
 
-        if (key == "elapsedCount")
-        {
-            module?.InvokeVoidAsync("pause");
-        }
-
-        await InvokeAsync(() => StateHasChanged());
+        await InvokeAsync(StateHasChanged);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         // ensure to only setup JS interop on first render
-        if (firstRender && module is null)
+        if (firstRender && _module is null)
         {
-            module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/TaskTimer.razor.js");
         }
 
         if (firstRender && !Timer.IsRunning)
         {
-            module?.InvokeVoidAsync("reset");
+            _module?.InvokeVoidAsync("reset");
         }
 
         if (firstRender && Timer.IsRunning)
         {
-            module?.InvokeVoidAsync("run", Timer.TimeRemaining);
+            _module?.InvokeVoidAsync("run", Timer.TimeRemaining);
         }
     }
 
     private void LoadSessions()
     {
-        if (!Sessions.Any())
-        {
-            Sessions = EddyWorkNotesContext.WorkNote.OrderDescending()
-            .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
+        // only load the sessions on the first page load 
+        if (_sessions.Any()) return;
+
+        const int lookbackHours = 16;
+        _sessions = EddyWorkNotesContext.WorkNote
+            .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > DateTime.Now.AddHours(-lookbackHours))
             .Select(w => new TimerSession(w))
             .ToList();
-        }
     }
 
     public void Dispose()
@@ -224,17 +220,17 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (module is not null)
+        if (_module is not null)
         {
             try
             {
-                await module.DisposeAsync();
+                await _module.DisposeAsync();
             }
             catch (JSDisconnectedException)
             {
                 // Handle exceptions if client JS module is disconnected
                 Logger.LogWarning("JavaScript module disconnected with time remaining: {TimeRemaining} minutes",
-                Timer.TimeRemaining.TotalMinutes);
+                    Timer.TimeRemaining.TotalMinutes);
             }
         }
     }
@@ -243,17 +239,8 @@
     {
         get
         {
-            if (Timer.IsRunning)
-            {
-                return true;
-            }
-
-            if (TimerCycle.CycleCount >= (2 * TargetWorkCycles) - 1)
-            {
-                return true;
-            }
-
-            return false;
+            var isCycleCountOverLimit = TimerCycle.CycleCount < 2 * TargetWorkCycles - 1;
+            return Timer.IsRunning && !isCycleCountOverLimit;
         }
     }
 
@@ -265,44 +252,41 @@
     /// </summary>
     private void Submit()
     {
-        bool isInputBlank = (Model == null || string.IsNullOrWhiteSpace(Model?.Description));
+        var isInputBlank = (Model == null || string.IsNullOrWhiteSpace(Model?.Description));
 
-        string trimmedNotes = Model?.Description is not null ? trimNotes(Model) : string.Empty;
-        string parsedNotes = trimmedNotes.Length > 0 ? parseNotes(trimmedNotes) : string.Empty;
+        var trimmedNotes = Model?.Description is not null ? TrimNotes(Model) : string.Empty;
 
-        if (Model != null && !isInputBlank && Sessions.All(s => s.WorkNotes?.Trim() != trimmedNotes))
-        {
-            Logger.LogInformation("Work notes submitted.\n{parsedNotes}", trimmedNotes);
+        if (Model == null || isInputBlank || _sessions.Any(s => s.WorkNotes?.Trim() == trimmedNotes)) return;
+        Logger.LogInformation("Work notes submitted.\n{parsedNotes}", trimmedNotes);
 
-            var session = new TimerSession("Work", DateTime.UtcNow, trimmedNotes);
-            var workNote = new DataEntities.WorkNote(trimmedNotes);
+        var session = new TimerSession("Work", DateTime.UtcNow, trimmedNotes);
+        var workNote = new DataEntities.WorkNote(trimmedNotes);
 
-            EddyWorkNotesContext.WorkNote.Add(workNote);
-            EddyWorkNotesContext.SaveChanges();
+        EddyWorkNotesContext.WorkNote.Add(workNote);
+        EddyWorkNotesContext.SaveChanges();
 
-            // add notes to current session without reloading the page on inserting the last note
-            Sessions = Sessions.Prepend(session).ToList();
+        // add notes to current session without reloading the page on inserting the last note
+        _sessions = _sessions.Prepend(session).ToList();
 
-            // clear the active notes once completed session notes are stored
-            Model!.Description = "";
-        }
+        // clear the active notes once completed session notes are stored
+        Model!.Description = "";
+        return;
+
+        static string TrimNotes(IWorkNote notes) => !string.IsNullOrWhiteSpace(notes.Description) ? notes.Description.Trim() : string.Empty;
     }
 
-    static string trimNotes(IWorkNote notes) => (notes != null && !string.IsNullOrWhiteSpace(notes.Description)) ?
-    notes!.Description!.Trim() : string.Empty;
+    string ParseNotes(string markdown) => Markdown.ToHtml(markdown, MarkdownPipeline);
 
-    string parseNotes(string markdown) => Markdown.ToHtml(markdown, MarkdownPipeline);
-
-    public async Task StartTimer()
+    private async Task StartTimer()
     {
         // skip the last break timer cycle (run until loopCount-1)
-        while (TimerCycle.CycleCount < loopCount)
+        while (TimerCycle.CycleCount < LoopCount)
         {
-            await Timer.Wait(new(TimerCycle.CycleTime));
+            await Timer.Wait(new TaskTimerRequest(TimerCycle.CycleTime));
         }
     }
 
-    public void SkipTimer()
+    private void SkipTimer()
     {
         @* module?.InvokeVoidAsync("pause"); *@
 
@@ -310,4 +294,5 @@
         Timer.Skip();
         StateHasChanged();
     }
+
 }

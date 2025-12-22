@@ -8,39 +8,30 @@ namespace PlaywrightTests;
 public partial class TaskTimerTests : PageTest
 {
     // test class variables shared across all tests
-    const string port = "5085";
-    static readonly Uri url = new($"http://localhost:{port}/tasktimer");
-    static readonly TimeSpan clickDelayTime = TimeSpan.FromMilliseconds(100);
+    private const string Port = "5085";
+    private static readonly Uri Url = new($"http://localhost:{Port}/tasktimer");
 
     public TaskTimerTests()
     {
         // test constants / static objects
-        ArgumentException.ThrowIfNullOrWhiteSpace(port);
-        ArgumentOutOfRangeException.ThrowIfEqual(int.TryParse(port, out int portNumber), false);
+        ArgumentException.ThrowIfNullOrWhiteSpace(Port);
+        ArgumentOutOfRangeException.ThrowIfEqual(int.TryParse(Port, out var portNumber), false);
         ArgumentOutOfRangeException.ThrowIfLessThan(portNumber, 1025);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(portNumber, 65536);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(clickDelayTime, TimeSpan.FromSeconds(2));
     }
 
     [TestInitialize]
     public async Task TestInitialize()
     {
-        await Page.GotoAsync(url.AbsoluteUri, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await Page.GotoAsync(Url.AbsoluteUri, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
     }
 
     [TestMethod]
     public async Task MainNavigation()
     {
-        UriBuilder builder;
-
-        if (Page.Url.StartsWith("https"))
-        {
-            builder = new UriBuilder("https", url.Host, 7067, url.PathAndQuery);
-        }
-        else
-        {
-            builder = new UriBuilder(url.AbsoluteUri);
-        }
+        var builder = Page.Url.StartsWith("https")
+            ? new UriBuilder("https", Url.Host, 7067, Url.PathAndQuery)
+            : new UriBuilder(Url.AbsoluteUri);
 
         await Expect(Page).ToHaveURLAsync(builder.Uri.AbsoluteUri);
     }
@@ -49,12 +40,13 @@ public partial class TaskTimerTests : PageTest
     public async Task TaskTimer_Should_StartCorrectly()
     {
         // Verify initial state
-        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Task Timer" })).ToBeVisibleAsync();
-        await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Start" })).ToBeVisibleAsync();
+        await Expect(Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Task Timer" }))
+            .ToBeVisibleAsync();
+        await Expect(Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Start" })).ToBeVisibleAsync();
         await Expect(Page.Locator("div[asp-for=timeRemaining]").First).ToContainTextAsync("Time Remaining");
 
         // Start the timer
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Start" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Start" }).ClickAsync();
 
         // Verify timer is running
         await Expect(Page.Locator("#timerDisplay").First).ToContainTextAsync("remaining");
@@ -65,17 +57,19 @@ public partial class TaskTimerTests : PageTest
     public async Task TaskTimer_Should_StopWhenReloaded()
     {
         // Verify initial state
-        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Task Timer" })).ToBeVisibleAsync();
-        await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Start" })).ToBeVisibleAsync();
+        await Expect(Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Task Timer" }))
+            .ToBeVisibleAsync();
+        await Expect(Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Start" })).ToBeVisibleAsync();
         await Expect(Page.Locator("div[asp-for=timeRemaining]").First).ToContainTextAsync("Time Remaining");
 
         // Start the timer
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Start" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Start" }).ClickAsync();
 
         await Page.ReloadAsync();
 
-        await Expect(Page.GetByRole(AriaRole.Heading, new() { Name = "Task Timer" })).ToBeVisibleAsync();
-        await Expect(Page.GetByRole(AriaRole.Button, new() { Name = "Start" })).ToBeVisibleAsync();
+        await Expect(Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Task Timer" }))
+            .ToBeVisibleAsync();
+        await Expect(Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Start" })).ToBeVisibleAsync();
         await Expect(Page.Locator("div[asp-for=timeRemaining]").First).ToContainTextAsync("Time Remaining");
 
         // Verify timer is stopped
@@ -85,16 +79,16 @@ public partial class TaskTimerTests : PageTest
     [TestMethod]
     public async Task TaskTimer_Should_ResetOnNavigation()
     {
-        await Page.GetByRole(AriaRole.Link, new() { Name = "Task Timer" }).ClickAsync();
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Start" }).ClickAsync();
-        await Page.GetByRole(AriaRole.Link, new() { Name = "Report - Work Notes" }).ClickAsync();
-        await Page.GetByRole(AriaRole.Link, new() { Name = "Task Timer" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Link, new PageGetByRoleOptions { Name = "Task Timer" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Start" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Link, new PageGetByRoleOptions { Name = "Report - Work Notes" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Link, new PageGetByRoleOptions { Name = "Task Timer" }).ClickAsync();
 
         // Verify timer is not running
         await Expect(Page.Locator("#timerDisplay").First).ToContainTextAsync("00:00 remaining");
 
         // start a new timer
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Start" }).ClickAsync();
+        await Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Start" }).ClickAsync();
 
         // Verify page state
         await Expect(Page.Locator("div.card.container-md p").First).ToContainTextAsync("Current Phase");

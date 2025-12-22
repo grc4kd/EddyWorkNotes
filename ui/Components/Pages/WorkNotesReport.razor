@@ -1,10 +1,8 @@
 @page "/worknotesreport"
 @using System.Text
-@using DataEntities
-@using Microsoft.EntityFrameworkCore
-@using ui.Data
+@using DataEntities.Interfaces
 
-@inject WorkNoteRepository WorkNoteRepository
+@inject IWorkNoteRepository WorkNoteRepository
 
 <PageTitle>Work Notes Report</PageTitle>
 
@@ -48,9 +46,6 @@ else
 </style>
 
 @code {
-    [Inject]
-    public EddyWorkNotesContext Context { get; set; } = default!;
-
     private string _reportContent = string.Empty;
     private bool _isLoading = true;
     private string _error = string.Empty;
@@ -61,21 +56,18 @@ else
         {
             _isLoading = true;
 
-            // Get work notes from the last 16 hours or current date
-            var sixteenHoursAgo = DateTime.UtcNow.AddHours(-16);
-            var workNotes = await WorkNoteRepository.GetWorkNotesSince(sixteenHoursAgo);
+            // Get work notes from around the current date and time
+            const int lookbackHours = 16;
+            var workNotes = await WorkNoteRepository.GetWorkNotesSince(DateTime.UtcNow.AddHours(-lookbackHours));
 
             // Concatenate all descriptions
             var sb = new StringBuilder();
-            foreach (var note in workNotes)
+            foreach (var note in workNotes.Where(note => !string.IsNullOrWhiteSpace(note.Description)))
             {
-                if (!string.IsNullOrWhiteSpace(note.Description))
-                {
-                    sb.Append("Date/Time: ");
-                    sb.AppendLine(note.RecordedAtTimeUtc.ToLocalTime().ToLongTimeString());
-                    sb.AppendLine(note.Description);
-                    sb.AppendLine();
-                }
+                sb.Append("Date/Time: ");
+                sb.AppendLine(note.RecordedAtTimeUtc.ToLocalTime().ToLongTimeString());
+                sb.AppendLine(note.Description);
+                sb.AppendLine();
             }
 
             _reportContent = sb.ToString().Trim();
@@ -89,4 +81,5 @@ else
             _isLoading = false;
         }
     }
+
 }

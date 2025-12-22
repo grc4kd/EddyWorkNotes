@@ -33,3 +33,6 @@ TestResults/*.trx
 
 # exclude Visual Studio Local Settings
 /.vs/
+
+# exclude Rider local settings
+/.idea/

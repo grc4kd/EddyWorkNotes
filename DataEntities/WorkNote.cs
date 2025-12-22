@@ -13,7 +13,4 @@ public record WorkNote(string Description = "",
 }
 
 [JsonSerializable(typeof(List<WorkNote>))]
-public sealed partial class WorkNoteSerializerContext : JsonSerializerContext
-{
-
-}
+public sealed partial class WorkNoteSerializerContext : JsonSerializerContext;

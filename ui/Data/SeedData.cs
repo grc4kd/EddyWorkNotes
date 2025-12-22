@@ -1,12 +1,11 @@
 using DataEntities;
-using Microsoft.EntityFrameworkCore;
 
 namespace ui.Data;
 
 /// <summary>
 /// Seed initial data for the WorkNotes table.
 /// </summary>
-public class SeedData
+public static class SeedData
 {
     public static void Initialize(EddyWorkNotesContext context)
     {
@@ -23,7 +22,7 @@ public class SeedData
         context.SaveChanges();
     }
 
-    public static List<WorkNote> Data =>
+    private static List<WorkNote> Data =>
     [
         new()
         {
