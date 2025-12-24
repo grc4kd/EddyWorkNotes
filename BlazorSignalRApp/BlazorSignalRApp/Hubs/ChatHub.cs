@@ -19,6 +19,9 @@ public class ChatHub : Hub
 
     public override async Task OnConnectedAsync()
     {
+        // Log when a new client connects
+        Console.WriteLine($"Client connected: {Context.ConnectionId}");
+        
         // Subscribe to notifier service events when client connects
         _notifierService.Notify += NotifyHandler;
         await base.OnConnectedAsync();
