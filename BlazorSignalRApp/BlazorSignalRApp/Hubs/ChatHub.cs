@@ -1,3 +1,4 @@
+using Eddy;
 using Microsoft.AspNetCore.SignalR;
 
 namespace BlazorSignalRApp.Hubs;
