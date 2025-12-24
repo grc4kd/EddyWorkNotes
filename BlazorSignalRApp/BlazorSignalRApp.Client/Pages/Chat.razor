@@ -21,53 +21,80 @@
 
     protected override async Task OnInitializedAsync()
     {
-        hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
-            .Build();
-
-        hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
+        try
         {
-            var formattedMessage = FormatSignalMessage(user, message);
-            messages.Add(formattedMessage);
-            InvokeAsync(StateHasChanged);
-        });
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
+                .Build();
 
-        await hubConnection.StartAsync();
+            hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
+            {
+                try
+                {
+                    var formattedMessage = FormatSignalMessage(user, message);
+                    messages.Add(formattedMessage);
+                    InvokeAsync(StateHasChanged);
+                }
+                catch (Exception ex)
+                {
+                    // Log error if message cannot be formatted
+                    var errorMessage = $"Error formatting message from {user}: {ex.Message}";
+                    messages.Add(errorMessage);
+                    InvokeAsync(StateHasChanged);
+                }
+            });
+
+            await hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            // Log connection errors
+            messages.Add($"Error connecting to SignalR: {ex.Message}");
+            StateHasChanged();
+        }
     }
 
     private string FormatSignalMessage(string user, string message)
     {
-        // Parse the message to determine operation type and parameters
-        if (message.StartsWith("timerReset"))
+        try
         {
-            var timeValue = message.Substring("timerReset".Length).Trim();
-            return $"timerReset {timeValue}: Timer was reset with a new time of {timeValue} seconds on the clock.";
+            // Parse the message to determine operation type and parameters
+            if (message.StartsWith("timerReset"))
+            {
+                var timeValue = message.Substring("timerReset".Length).Trim();
+                return $"timerReset {timeValue}: Timer was reset with a new time of {timeValue} seconds on the clock.";
+            }
+            else if (message.StartsWith("timerStarted"))
+            {
+                var timeValue = message.Substring("timerStarted".Length).Trim();
+                return $"timerStarted {timeValue}: Timer was started with a time of {timeValue} seconds.";
+            }
+            else if (message.StartsWith("timerStopped"))
+            {
+                return "timerStopped: Timer was stopped.";
+            }
+            else if (message.StartsWith("timerPaused"))
+            {
+                return "timerPaused: Timer was paused.";
+            }
+            else if (message.StartsWith("timerResumed"))
+            {
+                return "timerResumed: Timer was resumed.";
+            }
+            else if (message.StartsWith("timerCompleted"))
+            {
+                return "timerCompleted: Timer has completed its cycle.";
+            }
+            else
+            {
+                // Default formatting for unknown message types
+                return $"{user}: {message}";
+            }
         }
-        else if (message.StartsWith("timerStarted"))
+        catch (Exception ex)
         {
-            var timeValue = message.Substring("timerStarted".Length).Trim();
-            return $"timerStarted {timeValue}: Timer was started with a time of {timeValue} seconds.";
-        }
-        else if (message.StartsWith("timerStopped"))
-        {
-            return "timerStopped: Timer was stopped.";
-        }
-        else if (message.StartsWith("timerPaused"))
-        {
-            return "timerPaused: Timer was paused.";
-        }
-        else if (message.StartsWith("timerResumed"))
-        {
-            return "timerResumed: Timer was resumed.";
-        }
-        else if (message.StartsWith("timerCompleted"))
-        {
-            return "timerCompleted: Timer has completed its cycle.";
-        }
-        else
-        {
-            // Default formatting for unknown message types
-            return $"{user}: {message}";
+            // Return error message if formatting fails
+            return $"Error formatting message: {ex.Message}";
         }
     }
 
