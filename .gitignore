@@ -1,7 +1,8 @@
-# ignore some hidden directories by path
+# ignore some hidden directories by path globs
 .aider*
 .planning-docs/DEDICATION.txt
 .planning-docs/todo.txt
+.rules/
 
 # ignore C# compiled object and binaries under source directory
 */**/obj
@@ -35,4 +36,8 @@ TestResults/*.trx
 /.vs/
 
 # exclude Rider local settings
-/.idea/
+/.idea
+/BlazorSignalRApp/.idea
+
+# exclude user DotSettings files 
+*.DotSettings.user

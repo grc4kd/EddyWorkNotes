@@ -15,6 +15,8 @@ builder.Services.AddResponseCompression(opts =>
     opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["application/octet-stream"]);
 });
 
+builder.Services.AddSingleton(new Eddy.NotifierService());
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

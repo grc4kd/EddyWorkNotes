@@ -27,6 +27,8 @@
                 .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
                 .Build();
 
+            // make this a delegate and register it to handle ReceiveMessage
+            // check the method signature against the messages being sent out
             hubConnection.On<string, string>("ReceiveMessage", (user, message) =>
             {
                 try

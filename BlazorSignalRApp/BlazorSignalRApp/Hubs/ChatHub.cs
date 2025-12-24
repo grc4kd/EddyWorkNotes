@@ -1,6 +1,5 @@
 using Eddy;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Logging;
 
 namespace BlazorSignalRApp.Hubs;
 
