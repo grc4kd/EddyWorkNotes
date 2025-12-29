@@ -33,7 +33,7 @@ To install `Eddy`, follow these steps:
 4. Set up environment variables for database connection details using `dotnet user-secrets`:
 
     ```bash
-    dotnet user-secrets --project ui/ set "ConnectionStrings:EddyWorkNotesContext" "Host=localhost:5432;Database=postgres;Username=postgres;Password=dbpassword1!"
+    dotnet user-secrets --project ui/ set "ConnectionStrings:EddyWorkNotes" "Host=localhost:5432;Database=postgres;Username=postgres;Password=dbpassword1!"
     ```
 
 5. Run the application:
