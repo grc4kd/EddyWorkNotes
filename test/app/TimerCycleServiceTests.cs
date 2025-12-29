@@ -1,4 +1,4 @@
-using Eddy;
+using app;
 
 namespace test.app;
 

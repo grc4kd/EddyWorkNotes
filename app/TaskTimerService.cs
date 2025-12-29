@@ -1,7 +1,7 @@
-using Eddy.Requests;
+using app.Requests;
 using Microsoft.Extensions.Logging;
 
-namespace Eddy;
+namespace app;
 
 public class TaskTimerService(ILogger<TaskTimerService> logger, NotifierService notifier, CancellationTokenSource? cancellationTokenSource = null)
 {
