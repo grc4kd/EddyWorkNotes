@@ -10,13 +10,18 @@ var connStrName = "EddyWorkNotes";
 
 static NpgsqlConnectionStringBuilder BuildConnectionString(WebApplicationBuilder builder, string connStrName)
 {
+
     var npgsqlConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
         builder.Configuration.GetConnectionString(connStrName)
-        ?? throw new InvalidOperationException($"Connection string '{connStrName}' not found."))
+        ?? throw new InvalidOperationException($"Connection string '{connStrName}' not found."));
+
+    // allow overriding the postgres database server host using environment variable
+    var envEddyPostgresHost = Environment.GetEnvironmentVariable("EDDY_POSTGRES_HOST");
+    if (envEddyPostgresHost is not null)
     {
-        // allow overriding the postgres database server host using environment variable
-        Host = Environment.GetEnvironmentVariable("EDDY_POSTGRES_HOST") ?? "localhost"
-    };
+        npgsqlConnectionStringBuilder.Host = envEddyPostgresHost;
+    }
+
     return npgsqlConnectionStringBuilder;
 }
 
