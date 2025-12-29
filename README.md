@@ -70,7 +70,7 @@ Eddy helps you track your skill development and maintain motivation while coding
   - This project assumes a postgres server instance is configured at `localhost`.
 - The postgres database connection can be changed for a development build in runtime app settings, under the directory `ui\appsettings.json`.
 - An easy way to manage app secrets outside of `appsettings.json` is to use the `dotnet user-secrets` utility. The
-app expects a database connection string to configured with the key `ConnectionStrings:EddyWorkNotesContext`. A
+app expects a database connection string to configured with the key `ConnectionStrings:EddyWorkNotes`. A
 configured user secret at the project level has been tested and overrides the configuration from `appsettings.json`.
 
 ## Running the application
