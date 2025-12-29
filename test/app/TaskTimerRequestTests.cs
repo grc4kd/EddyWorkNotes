@@ -1,4 +1,4 @@
-using Eddy.Requests;
+using app.Requests;
 
 namespace test.app;
 

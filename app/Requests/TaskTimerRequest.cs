@@ -1,4 +1,4 @@
-namespace Eddy.Requests;
+namespace app.Requests;
 
 public record TaskTimerRequest()
 {

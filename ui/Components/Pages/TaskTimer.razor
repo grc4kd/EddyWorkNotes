@@ -1,15 +1,16 @@
 @page "/tasktimer"
 @using System.Threading.Tasks
 @using System.Reflection
-@using Eddy.Requests
 @using Markdig
 @using Markdig.Parsers
 @using Markdig.Renderers
-@using Microsoft.CodeAnalysis.CSharp.Syntax
 @using Microsoft.EntityFrameworkCore
-@using Microsoft.IdentityModel.Tokens
+
+@using app
+@using app.Requests
 @using ui.Components.Models
 @using ui.Data
+
 @rendermode InteractiveServer
 @implements IDisposable
 @implements IAsyncDisposable
@@ -210,10 +211,12 @@
     {
         if (!Sessions.Any())
         {
-            Sessions = EddyWorkNotesContext.WorkNote.OrderDescending()
+            Sessions = EddyWorkNotesContext.WorkNote
             .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
             .Select(w => new TimerSession(w))
             .ToList();
+
+            Sessions.Sort();
         }
     }
 

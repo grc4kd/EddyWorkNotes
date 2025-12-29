@@ -1,4 +1,4 @@
-namespace Eddy;
+namespace app;
 
 public class TimerCycleService
 {

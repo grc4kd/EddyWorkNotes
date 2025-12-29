@@ -1,5 +1,5 @@
-using Eddy;
-using Eddy.Requests;
+using app;
+using app.Requests;
 using Microsoft.Extensions.Logging;
 using Moq;
 
