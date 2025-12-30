@@ -20,6 +20,7 @@
 @inject ILogger<TaskTimer> Logger
 @inject MarkdownPipelineBuilder MarkdownPipelineBuilder
 @inject EddyWorkNotesContext EddyWorkNotesContext
+@inject WorkNoteRepository WorkNoteRepository
 @inject TaskTimerService Timer
 @inject TimerCycleService TimerCycle
 
@@ -170,7 +171,7 @@
         // attach an event handler for notifications from the timer service
         Notifier.Notify += OnNotify;
 
-        LoadSessions();
+        InvokeAsync(LoadSessions).ConfigureAwait(false);
     }
 
     public async Task OnNotify(string key, int value)
@@ -207,16 +208,13 @@
         }
     }
 
-    private void LoadSessions()
+    private async Task LoadSessions()
     {
         if (!Sessions.Any())
         {
-            Sessions = EddyWorkNotesContext.WorkNote
-            .Where(w => w.RecordedAtTimeUtc.ToLocalTime() > (DateTime.Now.AddHours(-16)))
-            .Select(w => new TimerSession(w))
-            .ToList();
+            var WorkNotes = await WorkNoteRepository.GetWorkNotesSince(DateTime.UtcNow.AddHours(-16));
 
-            Sessions.Sort();
+            Sessions.AddRange(WorkNotes.Select(note => new TimerSession(note)));
         }
     }
 
